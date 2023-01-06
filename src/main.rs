@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
+mod consts;
+mod game;
 mod main_menu;
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -18,6 +20,7 @@ fn main() {
     app.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_loopless_state(GameState::MainMenu)
         .add_plugin(main_menu::Plugin)
+        .add_plugin(game::Plugin)
         .add_startup_system(init);
 
     app.run();
