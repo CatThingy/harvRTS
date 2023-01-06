@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 bevy = { version = "0.9.1", features = ["wayland"] }
+iyes_loopless = "0.9.1"
