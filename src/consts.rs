@@ -2,14 +2,25 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 pub const PLOT_SIZE: Vec2 = Vec2::new(32.0, 16.0);
-pub const PLOT_COLLISION_GROUP: Group = Group::GROUP_31;
+pub const PLOT_COLLISION_GROUP: Group = Group::GROUP_32;
 
 pub const PLOT_CIRCLE_RADIUS: f32 = 24.0;
 
 pub const PLOT_CIRCLE_BUTTON_RADIUS: f32 = 4.0;
 
-pub const CARROT_GROW_TIME: f32 = 3.0;
+pub const CARROT_GROW_TIME: f32 = 0.1;
 pub const CARROT_DECAY_TIME: f32 = 3.0;
+pub const CARROT_MOVE_SPEED: f32 = 100.0;
+pub const CARROT_AGGRO_RANGE: f32 = 25.0;
+pub const CARROT_CHASE_RANGE: f32 = 50.0;
+pub const CARROT_LEASH_RANGE: f32 = 100.0;
+pub const CARROT_ATTACK_RANGE: f32 = 0.0;
 
-pub const SELECTION_COLLISION_GROUP: Group = Group::GROUP_30;
+
+pub const SELECTION_COLLISION_GROUP: Group = Group::GROUP_31;
 pub const UNIT_COLLISION_GROUP: Group = Group::GROUP_1;
+
+pub const FRIENDLY_COLLISION_GROUP: Group = Group::GROUP_30;
+pub const ENEMY_COLLISION_GROUP: Group = Group::GROUP_29;
+
+pub const TARGET_MOVEMENT_SLOP: f32 = 16.0;

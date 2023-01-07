@@ -2,60 +2,303 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    consts::{SELECTION_COLLISION_GROUP, UNIT_COLLISION_GROUP},
+    consts::{
+        CARROT_AGGRO_RANGE, CARROT_ATTACK_RANGE, CARROT_LEASH_RANGE, CARROT_MOVE_SPEED,
+        ENEMY_COLLISION_GROUP, FRIENDLY_COLLISION_GROUP, SELECTION_COLLISION_GROUP,
+        TARGET_MOVEMENT_SLOP, UNIT_COLLISION_GROUP, CARROT_CHASE_RANGE,
+    },
     plot::{Crop, HarvestEvent},
     selection::{Selectable, SelectionIndicator},
+    utils::MousePosition,
 };
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
 struct Unit {
     state: UnitState,
     command: Option<UnitCommand>,
     move_speed: f32,
     aggro_range: f32,
+    chase_range: f32,
+    attack_range: f32,
     leash_range: f32,
     last_target_pos: Vec2,
+    leash_pos: Vec2,
 }
 
-#[derive(Default)]
+impl Unit {
+    fn new(move_speed: f32, aggro_range: f32, chase_range: f32, attack_range: f32, leash_range: f32) -> Self {
+        Unit {
+            move_speed,
+            aggro_range,
+            chase_range,
+            attack_range,
+            leash_range,
+            ..default()
+        }
+    }
+}
+
+#[derive(Default, Reflect)]
 enum UnitState {
     #[default]
     Idle,
-    Move,
-    Chase,
+    Move(Vec2),
+    Chase(Entity),
     Attack,
 }
 
+#[derive(Reflect, FromReflect, Clone)]
 enum UnitCommand {
     Move(Vec2),
     AttackMove(Vec2),
 }
 
+trait Side {
+    const ATTACKS_GROUP: Group;
+}
+
+#[derive(Component)]
+struct Enemy;
+
+impl Side for Enemy {
+    const ATTACKS_GROUP: Group = FRIENDLY_COLLISION_GROUP;
+}
+
+#[derive(Component)]
+struct Friendly;
+
+impl Side for Friendly {
+    const ATTACKS_GROUP: Group = ENEMY_COLLISION_GROUP;
+}
+
 pub struct Plugin;
 
 impl Plugin {
-    fn process_unit_command(mut q_unit: Query<(&mut Unit, &GlobalTransform)>) {
+    fn update_unit_state<T: Side + Component>(
+        rapier_ctx: Res<RapierContext>,
+        mut q_unit: Query<(&mut Unit, &GlobalTransform), With<T>>,
+        q_transform: Query<&GlobalTransform>,
+    ) {
         for (mut unit, transform) in &mut q_unit {
+            let unit_pos = transform.translation().truncate();
             if let Some(command) = &unit.command {
                 match command {
-                    UnitCommand::Move(dest) | UnitCommand::AttackMove(dest) => {
-                        if transform.translation().truncate().distance(*dest) <= 4.0 {
-                            unit.last_target_pos = *dest;
+                    UnitCommand::Move(dest) => {
+                        if unit_pos.distance(*dest) <= TARGET_MOVEMENT_SLOP {
+                            let dest = *dest;
+                            unit.last_target_pos = dest;
+                            unit.leash_pos = dest;
                             unit.command = None;
                             unit.state = UnitState::Idle;
+                            continue;
+                        }
+                        unit.state = UnitState::Move(*dest);
+                    }
+                    UnitCommand::AttackMove(dest) => {
+                        if unit_pos.distance(*dest) <= TARGET_MOVEMENT_SLOP {
+                            let dest = *dest;
+                            unit.last_target_pos = dest;
+                            unit.leash_pos = dest;
+                            unit.command = None;
+                            unit.state = UnitState::Idle;
+                            continue;
+                        }
+
+                        match unit.state {
+                            UnitState::Idle => {
+                                unit.state = UnitState::Move(*dest);
+                            }
+                            UnitState::Move(dest) => {
+                                if unit_pos.distance(dest) <= TARGET_MOVEMENT_SLOP {
+                                    unit.last_target_pos = dest;
+                                    unit.leash_pos = dest;
+                                    unit.command = None;
+                                    unit.state = UnitState::Idle;
+                                    continue;
+                                }
+                                let mut min_target = None;
+
+                                rapier_ctx.intersections_with_shape(
+                                    unit_pos,
+                                    0.0,
+                                    &Collider::ball(unit.chase_range),
+                                    QueryFilter::new().groups(InteractionGroups {
+                                        memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                        filter: T::ATTACKS_GROUP.bits().into(),
+                                    }),
+                                    |e| {
+                                        let target_pos =
+                                            q_transform.get(e).unwrap().translation().truncate();
+                                        let dist = target_pos.distance(unit_pos);
+
+                                        if target_pos.distance(unit.leash_pos) < unit.leash_range {
+                                            match min_target {
+                                                Some((_, old_dist)) => {
+                                                    if old_dist > dist {
+                                                        min_target = Some((e, dist))
+                                                    }
+                                                }
+                                                None => min_target = Some((e, dist)),
+                                            }
+                                        }
+                                        true
+                                    },
+                                );
+
+                                if let Some((e, _)) = min_target {
+                                    unit.last_target_pos = dest;
+                                    unit.leash_pos = unit_pos;
+                                    unit.state = UnitState::Chase(e);
+                                }
+                            }
+                            UnitState::Chase(entity) => match q_transform.get(entity) {
+                                Ok(p) => {
+                                    let target_pos = p.translation().truncate();
+                                    let pos = unit_pos;
+
+                                    let distance = pos.distance(target_pos);
+
+                                    let leash_distance = unit.leash_pos.distance(pos);
+
+                                    if distance > unit.chase_range
+                                        || leash_distance > unit.leash_range
+                                    {
+                                        unit.state = UnitState::Move(unit.last_target_pos);
+                                    } else if distance < unit.attack_range {
+                                        unit.state = UnitState::Attack;
+                                    }
+                                }
+                                Err(_) => {
+                                    unit.state = UnitState::Move(unit.last_target_pos);
+                                }
+                            },
+                            UnitState::Attack => {}
                         }
                     }
+                }
+            } else {
+                match unit.state {
+                    UnitState::Idle => {
+                        let mut min_target = None;
+                        rapier_ctx.intersections_with_shape(
+                            unit_pos,
+                            0.0,
+                            &Collider::ball(unit.aggro_range),
+                            QueryFilter::new().groups(InteractionGroups {
+                                memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                filter: T::ATTACKS_GROUP.bits().into(),
+                            }),
+                            |e| {
+                                let target_pos =
+                                    q_transform.get(e).unwrap().translation().truncate();
+                                let dist = target_pos.distance(unit_pos);
+
+                                if target_pos.distance(unit.leash_pos) < unit.leash_range {
+                                    match min_target {
+                                        Some((_, old_dist)) => {
+                                            if old_dist > dist {
+                                                min_target = Some((e, dist))
+                                            }
+                                        }
+                                        None => min_target = Some((e, dist)),
+                                    }
+                                }
+                                true
+                            },
+                        );
+
+                        if let Some((e, _)) = min_target {
+                            unit.leash_pos = unit_pos;
+                            unit.state = UnitState::Chase(e);
+                        }
+                    }
+                    UnitState::Move(dest) => {
+                        if unit_pos.distance(dest) <= TARGET_MOVEMENT_SLOP {
+                            unit.last_target_pos = unit_pos;
+                            unit.leash_pos = unit_pos;
+                            unit.command = None;
+                            unit.state = UnitState::Idle;
+                            continue;
+                        }
+
+                        let mut min_target = None;
+
+                        rapier_ctx.intersections_with_shape(
+                            unit_pos,
+                            0.0,
+                            &Collider::ball(unit.aggro_range),
+                            QueryFilter::new().groups(InteractionGroups {
+                                memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                filter: T::ATTACKS_GROUP.bits().into(),
+                            }),
+                            |e| {
+                                let target_pos =
+                                    q_transform.get(e).unwrap().translation().truncate();
+                                let dist = target_pos.distance(unit_pos);
+
+                                if target_pos.distance(unit.leash_pos) < unit.leash_range {
+                                    match min_target {
+                                        Some((_, old_dist)) => {
+                                            if old_dist > dist {
+                                                min_target = Some((e, dist))
+                                            }
+                                        }
+                                        None => min_target = Some((e, dist)),
+                                    }
+                                }
+                                true
+                            },
+                        );
+
+                        if let Some((e, _)) = min_target {
+                            unit.state = UnitState::Chase(e);
+                        }
+                    }
+                    UnitState::Chase(entity) => match q_transform.get(entity) {
+                        Ok(p) => {
+                            let target_pos = p.translation().truncate();
+                            let pos = unit_pos;
+
+                            let distance = pos.distance(target_pos);
+
+                            let leash_distance = unit.leash_pos.distance(pos);
+
+                            if distance > unit.aggro_range || leash_distance > unit.leash_range {
+                                unit.state = UnitState::Move(unit.leash_pos);
+                            } else if distance < unit.attack_range {
+                                unit.state = UnitState::Attack;
+                            }
+                        }
+                        Err(_) => {
+                            unit.state = UnitState::Move(unit.leash_pos);
+                        }
+                    },
+                    UnitState::Attack => todo!(),
                 }
             }
         }
     }
 
-    fn process_unit_state(mut q_unit: Query<(&mut Unit, &GlobalTransform)>) {
-        for (mut unit, transform) in &mut q_unit {
+    fn process_unit_state(
+        mut q_unit: Query<(&mut Velocity, &Unit, &GlobalTransform)>,
+        q_transform: Query<&GlobalTransform>,
+    ) {
+        for (mut velocity, unit, transform) in &mut q_unit {
             match unit.state {
                 UnitState::Idle => {}
-                UnitState::Move => {}
-                UnitState::Chase => {}
+                UnitState::Move(dest) => {
+                    velocity.linvel = (dest - transform.translation().truncate())
+                        .normalize_or_zero()
+                        * unit.move_speed;
+                }
+                UnitState::Chase(target) => {
+                    if let Ok(target) = q_transform.get(target) {
+                        velocity.linvel = (target.translation() - transform.translation())
+                            .truncate()
+                            .normalize_or_zero()
+                            * unit.move_speed;
+                    };
+                }
                 UnitState::Attack => {}
             }
         }
@@ -82,11 +325,24 @@ impl Plugin {
                         Collider::ball(4.0),
                         LockedAxes::ROTATION_LOCKED_Z,
                         CollisionGroups {
-                            memberships: SELECTION_COLLISION_GROUP | UNIT_COLLISION_GROUP,
+                            memberships: SELECTION_COLLISION_GROUP
+                                | UNIT_COLLISION_GROUP
+                                | FRIENDLY_COLLISION_GROUP,
                             filters: UNIT_COLLISION_GROUP,
                         },
-                        Unit::default(),
+                        Unit::new(
+                            CARROT_MOVE_SPEED,
+                            CARROT_AGGRO_RANGE,
+                            CARROT_CHASE_RANGE,
+                            CARROT_ATTACK_RANGE,
+                            CARROT_LEASH_RANGE,
+                        ),
+                        Damping {
+                            linear_damping: 20.0,
+                            angular_damping: 0.0,
+                        },
                         Selectable::default(),
+                        Friendly,
                     ))
                     .with_children(|parent| {
                         parent.spawn((
@@ -106,10 +362,72 @@ impl Plugin {
             }
         }
     }
+
+    fn debug_spawn_enemy(
+        mut cmd: Commands,
+        mouse_pos: Res<MousePosition>,
+        keyboard: Res<Input<KeyCode>>,
+        assets: Res<AssetServer>,
+    ) {
+        if keyboard.just_pressed(KeyCode::E) {
+            cmd.spawn((
+                SpriteBundle {
+                    texture: assets.load("enemy.png"),
+                    transform: Transform::from_translation(mouse_pos.0),
+                    ..default()
+                },
+                RigidBody::Dynamic,
+                Velocity::default(),
+                Collider::ball(4.0),
+                LockedAxes::ROTATION_LOCKED_Z,
+                CollisionGroups {
+                    memberships: UNIT_COLLISION_GROUP | ENEMY_COLLISION_GROUP,
+                    filters: UNIT_COLLISION_GROUP,
+                },
+                Unit::default(),
+                Enemy,
+                Damping {
+                    linear_damping: 20.0,
+                    angular_damping: 0.0,
+                },
+            ));
+        }
+    }
+
+    fn process_command(
+        mut q_unit: Query<(&mut Unit, &Selectable)>,
+        mouse_buttons: Res<Input<MouseButton>>,
+        keyboard: Res<Input<KeyCode>>,
+        mouse_pos: Res<MousePosition>,
+    ) {
+        let mut command: Option<UnitCommand> = None;
+
+        if mouse_buttons.just_pressed(MouseButton::Right) {
+            command = Some(UnitCommand::Move(mouse_pos.truncate()));
+        } else if keyboard.just_pressed(KeyCode::A) {
+            command = Some(UnitCommand::AttackMove(mouse_pos.truncate()));
+        }
+        if command.is_some() {
+            for (mut unit, selectable) in &mut q_unit {
+                if selectable.selected {
+                    unit.command = command.clone();
+                }
+            }
+        }
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.add_system(Self::handle_harvest_event);
+        app.register_type::<Unit>()
+            .register_type::<Option<UnitCommand>>()
+            .register_type::<UnitCommand>()
+            .register_type::<UnitState>()
+            .add_system(Self::handle_harvest_event)
+            .add_system(Self::debug_spawn_enemy)
+            .add_system(Self::process_unit_state)
+            .add_system(Self::process_command)
+            .add_system(Self::update_unit_state::<Friendly>)
+            .add_system(Self::update_unit_state::<Enemy>);
     }
 }
