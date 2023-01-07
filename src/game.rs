@@ -1,13 +1,10 @@
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use crate::{consts::PLOT_SIZE, GameState};
+use crate::GameState;
 
 #[derive(Component)]
 pub struct Rose;
-
-#[derive(Component)]
-pub struct Plot;
 
 pub struct Plugin;
 
@@ -21,36 +18,11 @@ impl Plugin {
                     ..default()
                 },
 
-                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.1)),
+                transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.5)),
                 ..default()
             },
             Rose,
         ));
-
-        for offset in [
-            Vec2::new(1.0, 0.0),
-            Vec2::new(0.0, 1.0),
-            Vec2::new(-1.0, 0.0),
-            Vec2::new(0.0, -1.0),
-        ] {
-            cmd.spawn((
-                SpriteBundle {
-                    texture: assets.load("plot.png"),
-                    sprite: Sprite {
-                        custom_size: Some(PLOT_SIZE),
-                        ..default()
-                    },
-
-                    transform: Transform::from_translation(Vec3::new(
-                        offset.x * PLOT_SIZE.x,
-                        offset.y * PLOT_SIZE.y,
-                        0.0,
-                    )),
-                    ..default()
-                },
-                Plot,
-            ));
-        }
     }
 }
 
