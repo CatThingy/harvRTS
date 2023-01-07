@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-use bevy::{prelude::*, utils::HashMap};
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -9,6 +9,7 @@ use crate::{
         CARROT_DECAY_TIME, CARROT_GROW_TIME, PLOT_CIRCLE_BUTTON_RADIUS, PLOT_CIRCLE_RADIUS,
         PLOT_COLLISION_GROUP, PLOT_SIZE,
     },
+    selection::Selectable,
     utils::MousePosition,
     GameState,
 };
@@ -47,6 +48,11 @@ enum PlotAction {
     Plant(Crop),
     Harvest,
     Cancel,
+}
+
+pub struct HarvestEvent {
+    pub crop: Crop,
+    pub pos: Vec3,
 }
 
 pub struct Plugin;
@@ -102,18 +108,24 @@ impl Plugin {
         mouse_button: Res<Input<MouseButton>>,
         rapier_ctx: Res<RapierContext>,
         mut plot_circle: ResMut<ActivePlotCircle>,
-        q_plot: Query<(Entity, &GlobalTransform), With<Plot>>,
+        q_plot: Query<(Entity, &Plot, &GlobalTransform)>,
+        q_selectable: Query<&Selectable>,
     ) {
-        if mouse_button.just_pressed(MouseButton::Left) && plot_circle.is_none() {
+        for selectable in &q_selectable {
+            if selectable.hovered {
+                return;
+            }
+        }
+        if mouse_button.just_released(MouseButton::Left) && plot_circle.is_none() {
             let mut plot = None;
             rapier_ctx.intersections_with_point(mouse_pos.0.truncate(), QueryFilter::new(), |e| {
-                if let Ok((entity, transform)) = q_plot.get(e) {
-                    plot = Some((entity, transform.translation()));
+                if let Ok((entity, plot_data, transform)) = q_plot.get(e) {
+                    plot = Some((entity, plot_data, transform.translation()));
                     return true;
                 }
                 false
             });
-            let Some((entity, mut pos)) = plot else { return; };
+            let Some((entity, plot, mut pos)) = plot else { return; };
 
             pos.z = 1.0;
 
@@ -127,35 +139,71 @@ impl Plugin {
                     PlotCircle { target: entity },
                 ))
                 .with_children(|v| {
-                    //  carrot
-                    v.spawn((
-                        SpriteBundle {
-                            texture: assets.load("plant_carrot.png"),
-                            transform: Transform::from_translation(Vec3 {
-                                x: f32::cos(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
-                                y: f32::sin(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
-                                z: 0.1,
-                            }),
-                            ..default()
-                        },
-                        PlotCircleButton {
-                            action: PlotAction::Plant(Crop::Carrot),
-                        },
-                    ));
-                    // v.spawn((
-                    //     SpriteBundle {
-                    //         texture: assets.load("cancel.png"),
-                    //         transform: Transform::from_translation(Vec3 {
-                    //             x: f32::cos(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
-                    //             y: f32::sin(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
-                    //             z: 0.1,
-                    //         }),
-                    //         ..default()
-                    //     },
-                    //     PlotCircleButton {
-                    //         action: PlotAction::Cancel,
-                    //     },
-                    // ));
+                    match plot {
+                        Plot::Empty => {
+                            //  carrot
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("plant_carrot.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Plant(Crop::Carrot),
+                                },
+                            ));
+                        }
+                        Plot::Growing(_, _) => {
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("cancel.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Cancel,
+                                },
+                            ));
+                        }
+                        Plot::Ready(_, _) => {
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("cancel.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Cancel,
+                                },
+                            ));
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("harvest.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Harvest,
+                                },
+                            ));
+                        }
+                    }
                 })
                 .id();
 
@@ -215,9 +263,10 @@ impl Plugin {
     fn handle_plot_event(
         mut cmd: Commands,
         mut plot_events: ResMut<Events<PlotAction>>,
+        mut harvest_events: EventWriter<HarvestEvent>,
         mut plot_circle: ResMut<ActivePlotCircle>,
         q_plot_circle: Query<&PlotCircle>,
-        mut q_plots: Query<&mut Plot>,
+        mut q_plots: Query<(&mut Plot, &GlobalTransform)>,
     ) {
         for event in plot_events.drain() {
             let plot_circle = plot_circle.0.take().unwrap();
@@ -225,7 +274,7 @@ impl Plugin {
 
             let target = q_plot_circle.get(plot_circle).unwrap().target;
 
-            let mut plot = q_plots.get_mut(target).unwrap();
+            let (mut plot, transform) = q_plots.get_mut(target).unwrap();
 
             match &*plot {
                 Plot::Empty => match event {
@@ -240,9 +289,16 @@ impl Plugin {
                     }
                     PlotAction::Cancel => *plot = Plot::Empty,
                 },
-                Plot::Ready(_, _) => match event {
+                Plot::Ready(crop, _) => match event {
                     PlotAction::Plant(_) => error!("can't plant in a grown plot"),
-                    PlotAction::Harvest | PlotAction::Cancel => *plot = Plot::Empty,
+                    PlotAction::Harvest => {
+                        harvest_events.send(HarvestEvent {
+                            crop: crop.clone(),
+                            pos: transform.translation(),
+                        });
+                        *plot = Plot::Empty;
+                    }
+                    PlotAction::Cancel => *plot = Plot::Empty,
                 },
             }
         }
@@ -300,6 +356,7 @@ impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ActivePlotCircle>()
             .init_resource::<Events<PlotAction>>()
+            .init_resource::<Events<HarvestEvent>>()
             .add_enter_system(GameState::InGame, Self::init)
             .add_system(Self::remove_plot_circle.before("plot_click"))
             .add_system(Self::plot_click.label("plot_click"))

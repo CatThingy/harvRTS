@@ -10,3 +10,6 @@ pub const PLOT_CIRCLE_BUTTON_RADIUS: f32 = 4.0;
 
 pub const CARROT_GROW_TIME: f32 = 3.0;
 pub const CARROT_DECAY_TIME: f32 = 3.0;
+
+pub const SELECTION_COLLISION_GROUP: Group = Group::GROUP_30;
+pub const UNIT_COLLISION_GROUP: Group = Group::GROUP_1;
