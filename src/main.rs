@@ -1,10 +1,11 @@
 use bevy::prelude::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
-use bevy_inspector_egui::{prelude::*, quick::WorldInspectorPlugin};
 
 mod consts;
 mod game;
+mod health;
 mod main_menu;
 mod plot;
 mod selection;
@@ -36,6 +37,7 @@ fn main() {
         .add_plugin(main_menu::Plugin)
         .add_plugin(plot::Plugin)
         .add_plugin(unit::Plugin)
+        .add_plugin(health::Plugin)
         .add_plugin(game::Plugin)
         .add_plugin(selection::Plugin)
         .add_startup_system(init);

@@ -14,7 +14,10 @@ pub const CARROT_MOVE_SPEED: f32 = 100.0;
 pub const CARROT_AGGRO_RANGE: f32 = 25.0;
 pub const CARROT_CHASE_RANGE: f32 = 50.0;
 pub const CARROT_LEASH_RANGE: f32 = 100.0;
-pub const CARROT_ATTACK_RANGE: f32 = 0.0;
+pub const CARROT_ATTACK_RANGE: f32 = 10.0;
+pub const CARROT_ATTACK_SPEED: f32 = 1.0;
+pub const CARROT_HEALTH: f32 = 20.0;
+pub const CARROT_DAMAGE: f32 = 2.0;
 
 
 pub const SELECTION_COLLISION_GROUP: Group = Group::GROUP_31;

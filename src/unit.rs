@@ -2,14 +2,11 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    consts::{
-        CARROT_AGGRO_RANGE, CARROT_ATTACK_RANGE, CARROT_LEASH_RANGE, CARROT_MOVE_SPEED,
-        ENEMY_COLLISION_GROUP, FRIENDLY_COLLISION_GROUP, SELECTION_COLLISION_GROUP,
-        TARGET_MOVEMENT_SLOP, UNIT_COLLISION_GROUP, CARROT_CHASE_RANGE,
-    },
+    consts::*,
+    health::{Dead, Health, HealthBar, HealthChange},
     plot::{Crop, HarvestEvent},
     selection::{Selectable, SelectionIndicator},
-    utils::MousePosition,
+    utils::{Bar, MousePosition},
 };
 
 #[derive(Component, Default, Reflect)]
@@ -21,18 +18,30 @@ struct Unit {
     chase_range: f32,
     attack_range: f32,
     leash_range: f32,
+    attack_timer: Timer,
+    damage: f32,
     last_target_pos: Vec2,
     leash_pos: Vec2,
 }
 
 impl Unit {
-    fn new(move_speed: f32, aggro_range: f32, chase_range: f32, attack_range: f32, leash_range: f32) -> Self {
+    fn new(
+        move_speed: f32,
+        aggro_range: f32,
+        chase_range: f32,
+        attack_range: f32,
+        leash_range: f32,
+        attack_speed: f32,
+        damage: f32,
+    ) -> Self {
         Unit {
             move_speed,
             aggro_range,
             chase_range,
             attack_range,
             leash_range,
+            attack_timer: Timer::from_seconds(attack_speed, TimerMode::Once),
+            damage,
             ..default()
         }
     }
@@ -44,7 +53,7 @@ enum UnitState {
     Idle,
     Move(Vec2),
     Chase(Entity),
-    Attack,
+    Attack(Entity),
 }
 
 #[derive(Reflect, FromReflect, Clone)]
@@ -77,7 +86,7 @@ impl Plugin {
     fn update_unit_state<T: Side + Component>(
         rapier_ctx: Res<RapierContext>,
         mut q_unit: Query<(&mut Unit, &GlobalTransform), With<T>>,
-        q_transform: Query<&GlobalTransform>,
+        q_transform: Query<&GlobalTransform, Without<Dead>>,
     ) {
         for (mut unit, transform) in &mut q_unit {
             let unit_pos = transform.translation().truncate();
@@ -127,18 +136,21 @@ impl Plugin {
                                         filter: T::ATTACKS_GROUP.bits().into(),
                                     }),
                                     |e| {
-                                        let target_pos =
-                                            q_transform.get(e).unwrap().translation().truncate();
-                                        let dist = target_pos.distance(unit_pos);
+                                        if let Ok(target) = q_transform.get(e) {
+                                            let target_pos = target.translation().truncate();
+                                            let dist = target_pos.distance(unit_pos);
 
-                                        if target_pos.distance(unit.leash_pos) < unit.leash_range {
-                                            match min_target {
-                                                Some((_, old_dist)) => {
-                                                    if old_dist > dist {
-                                                        min_target = Some((e, dist))
+                                            if target_pos.distance(unit.leash_pos)
+                                                < unit.leash_range
+                                            {
+                                                match min_target {
+                                                    Some((_, old_dist)) => {
+                                                        if old_dist > dist {
+                                                            min_target = Some((e, dist))
+                                                        }
                                                     }
+                                                    None => min_target = Some((e, dist)),
                                                 }
-                                                None => min_target = Some((e, dist)),
                                             }
                                         }
                                         true
@@ -165,14 +177,19 @@ impl Plugin {
                                     {
                                         unit.state = UnitState::Move(unit.last_target_pos);
                                     } else if distance < unit.attack_range {
-                                        unit.state = UnitState::Attack;
+                                        unit.state = UnitState::Attack(entity);
                                     }
                                 }
                                 Err(_) => {
                                     unit.state = UnitState::Move(unit.last_target_pos);
                                 }
                             },
-                            UnitState::Attack => {}
+                            UnitState::Attack(e) => {
+                                if unit.attack_timer.finished() {
+                                    unit.attack_timer.reset();
+                                    unit.state = UnitState::Chase(e);
+                                }
+                            }
                         }
                     }
                 }
@@ -189,18 +206,19 @@ impl Plugin {
                                 filter: T::ATTACKS_GROUP.bits().into(),
                             }),
                             |e| {
-                                let target_pos =
-                                    q_transform.get(e).unwrap().translation().truncate();
-                                let dist = target_pos.distance(unit_pos);
+                                if let Ok(target) = q_transform.get(e) {
+                                    let target_pos = target.translation().truncate();
+                                    let dist = target_pos.distance(unit_pos);
 
-                                if target_pos.distance(unit.leash_pos) < unit.leash_range {
-                                    match min_target {
-                                        Some((_, old_dist)) => {
-                                            if old_dist > dist {
-                                                min_target = Some((e, dist))
+                                    if target_pos.distance(unit.leash_pos) < unit.leash_range {
+                                        match min_target {
+                                            Some((_, old_dist)) => {
+                                                if old_dist > dist {
+                                                    min_target = Some((e, dist))
+                                                }
                                             }
+                                            None => min_target = Some((e, dist)),
                                         }
-                                        None => min_target = Some((e, dist)),
                                     }
                                 }
                                 true
@@ -232,18 +250,19 @@ impl Plugin {
                                 filter: T::ATTACKS_GROUP.bits().into(),
                             }),
                             |e| {
-                                let target_pos =
-                                    q_transform.get(e).unwrap().translation().truncate();
-                                let dist = target_pos.distance(unit_pos);
+                                if let Ok(target) = q_transform.get(e) {
+                                    let target_pos = target.translation().truncate();
+                                    let dist = target_pos.distance(unit_pos);
 
-                                if target_pos.distance(unit.leash_pos) < unit.leash_range {
-                                    match min_target {
-                                        Some((_, old_dist)) => {
-                                            if old_dist > dist {
-                                                min_target = Some((e, dist))
+                                    if target_pos.distance(unit.leash_pos) < unit.leash_range {
+                                        match min_target {
+                                            Some((_, old_dist)) => {
+                                                if old_dist > dist {
+                                                    min_target = Some((e, dist))
+                                                }
                                             }
+                                            None => min_target = Some((e, dist)),
                                         }
-                                        None => min_target = Some((e, dist)),
                                     }
                                 }
                                 true
@@ -266,24 +285,32 @@ impl Plugin {
                             if distance > unit.aggro_range || leash_distance > unit.leash_range {
                                 unit.state = UnitState::Move(unit.leash_pos);
                             } else if distance < unit.attack_range {
-                                unit.state = UnitState::Attack;
+                                unit.state = UnitState::Attack(entity);
                             }
                         }
                         Err(_) => {
                             unit.state = UnitState::Move(unit.leash_pos);
                         }
                     },
-                    UnitState::Attack => todo!(),
+                    UnitState::Attack(_) => {
+                        if unit.attack_timer.finished() {
+                            unit.attack_timer.reset();
+                            unit.state = UnitState::Idle;
+                        }
+                    }
                 }
             }
         }
     }
 
     fn process_unit_state(
-        mut q_unit: Query<(&mut Velocity, &Unit, &GlobalTransform)>,
+        mut q_unit: Query<(&mut Velocity, &mut Unit, &GlobalTransform)>,
         q_transform: Query<&GlobalTransform>,
+        time: Res<Time>,
+        mut damage: EventWriter<HealthChange>,
     ) {
-        for (mut velocity, unit, transform) in &mut q_unit {
+        for (mut velocity, mut unit, transform) in &mut q_unit {
+            unit.attack_timer.tick(time.delta());
             match unit.state {
                 UnitState::Idle => {}
                 UnitState::Move(dest) => {
@@ -299,7 +326,14 @@ impl Plugin {
                             * unit.move_speed;
                     };
                 }
-                UnitState::Attack => {}
+                UnitState::Attack(entity) => {
+                    if unit.attack_timer.finished() {
+                        damage.send(HealthChange {
+                            target: entity,
+                            amount: -unit.damage,
+                        });
+                    }
+                }
             }
         }
     }
@@ -336,11 +370,14 @@ impl Plugin {
                             CARROT_CHASE_RANGE,
                             CARROT_ATTACK_RANGE,
                             CARROT_LEASH_RANGE,
+                            CARROT_ATTACK_SPEED,
+                            CARROT_DAMAGE,
                         ),
                         Damping {
                             linear_damping: 20.0,
                             angular_damping: 0.0,
                         },
+                        Health::new(CARROT_HEALTH),
                         Selectable::default(),
                         Friendly,
                     ))
@@ -384,13 +421,33 @@ impl Plugin {
                     memberships: UNIT_COLLISION_GROUP | ENEMY_COLLISION_GROUP,
                     filters: UNIT_COLLISION_GROUP,
                 },
-                Unit::default(),
-                Enemy,
                 Damping {
                     linear_damping: 20.0,
                     angular_damping: 0.0,
                 },
-            ));
+                Unit::default(),
+                Enemy,
+                Health::new(5.0),
+            ))
+            .with_children(|parent| {
+                parent.spawn((
+                    SpriteBundle {
+                        transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
+                        sprite: Sprite {
+                            custom_size: Some(Vec2::new(2.0, 1.0)),
+                            color: Color::RED,
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    Bar {
+                        value: 5.0,
+                        max: 5.0,
+                        size: 10.0,
+                    },
+                    HealthBar,
+                ));
+            });
         }
     }
 
