@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use crate::{health::Dead, GameState, MainCamera};
+use crate::{game::Spawner, health::Dead, GameState, MainCamera};
 
 #[derive(Default, Deref, Resource)]
 pub struct MousePosition(pub Vec3);
@@ -12,6 +14,8 @@ pub struct Bar {
     pub max: f32,
     pub size: f32,
 }
+
+pub struct Reset;
 
 pub struct Plugin;
 impl Plugin {
@@ -43,11 +47,24 @@ impl Plugin {
             cmd.entity(dead).despawn_recursive();
         }
     }
+
+    fn reset(mut cmd: Commands, q_all: Query<Entity, (With<ComputedVisibility>, Without<Parent>)>) {
+        cmd.insert_resource(Spawner {
+            enemy: Timer::from_seconds(5.0, TimerMode::Repeating),
+            total: Duration::default(),
+        });
+
+        for entity in &q_all {
+            cmd.entity(entity).despawn_recursive();
+        }
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MousePosition>()
+            .init_resource::<Events<Reset>>()
+            .add_exit_system(GameState::InGame, Self::reset)
             .add_system(Self::update_bar.run_in_state(GameState::InGame))
             .add_system(Self::update_mouse_position.run_in_state(GameState::InGame))
             .add_system(Self::handle_dead.run_in_state(GameState::InGame));

@@ -5,6 +5,7 @@ use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::consts::*;
+use crate::game_over::GameMenu;
 use crate::health::Health;
 use crate::health::HealthBar;
 use crate::unit::Enemy;
@@ -18,8 +19,8 @@ pub struct Rose;
 
 #[derive(Resource)]
 pub struct Spawner {
-    enemy: Timer,
-    total: Duration,
+    pub enemy: Timer,
+    pub total: Duration,
 }
 
 pub struct Plugin;
@@ -37,7 +38,14 @@ impl Plugin {
                 transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.5)),
                 ..default()
             },
+            Health::new(100.0),
             Rose,
+            RigidBody::Fixed,
+            Collider::ball(4.0),
+            CollisionGroups {
+                memberships: UNIT_COLLISION_GROUP | FRIENDLY_COLLISION_GROUP,
+                filters: UNIT_COLLISION_GROUP,
+            },
         ));
     }
 
@@ -122,6 +130,13 @@ impl Plugin {
             });
         }
     }
+
+    fn end_game(q_rose: Query<&Rose>, mut q_panel: Query<&mut Style, With<GameMenu>>) {
+        if q_rose.is_empty() {
+            let mut panel = q_panel.single_mut();
+            panel.display = Display::Flex;
+        }
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
@@ -131,6 +146,7 @@ impl bevy::app::Plugin for Plugin {
             total: Duration::default(),
         })
         .add_enter_system(GameState::InGame, Self::init)
+        .add_system(Self::end_game.run_in_state(GameState::InGame))
         .add_system(Self::enemy_spawning.run_in_state(GameState::InGame));
     }
 }
