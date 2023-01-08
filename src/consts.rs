@@ -13,17 +13,17 @@ pub const PLOT_UNLOCK_COST: u32 = 150;
 pub const CARROT_GROW_TIME: f32 = 10.0;
 pub const CARROT_DECAY_TIME: f32 = 30.0;
 pub const CARROT_COST: u32 = 50;
-pub const CARROT_COMPOST: u32 = 60;
+pub const CARROT_COMPOST: u32 = 90;
 
 pub const CLOVER_GROW_TIME: f32 = 3.0;
 pub const CLOVER_DECAY_TIME: f32 = 4.0;
 pub const CLOVER_COST: u32 = 0;
-pub const CLOVER_COMPOST: u32 = 50;
+pub const CLOVER_COMPOST: u32 = 40;
 
 pub const WHEAT_GROW_TIME: f32 = 5.0;
 pub const WHEAT_DECAY_TIME: f32 = 15.0;
 pub const WHEAT_COST: u32 = 20;
-pub const WHEAT_COMPOST: u32 = 30;
+pub const WHEAT_COMPOST: u32 = 40;
 
 // -----------------------------------------------------------------------
 
