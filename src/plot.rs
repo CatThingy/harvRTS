@@ -6,9 +6,10 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     consts::{
-        CARROT_COMPOST, CARROT_COST, CARROT_DECAY_TIME, CARROT_GROW_TIME,
-        PLOT_CIRCLE_BUTTON_RADIUS, PLOT_CIRCLE_RADIUS, PLOT_COLLISION_GROUP, PLOT_SIZE,
-        PLOT_UNLOCK_COST,
+        CARROT_COMPOST, CARROT_COST, CARROT_DECAY_TIME, CARROT_GROW_TIME, CLOVER_COMPOST,
+        CLOVER_COST, CLOVER_DECAY_TIME, CLOVER_GROW_TIME, PLOT_CIRCLE_BUTTON_RADIUS,
+        PLOT_CIRCLE_RADIUS, PLOT_COLLISION_GROUP, PLOT_SIZE, PLOT_UNLOCK_COST, WHEAT_COMPOST,
+        WHEAT_COST, WHEAT_DECAY_TIME, WHEAT_GROW_TIME,
     },
     game::Compost,
     selection::Selectable,
@@ -31,6 +32,8 @@ pub struct PlotOverlay;
 #[derive(Debug, Clone, PartialEq, Component)]
 pub enum Crop {
     Carrot,
+    Clover,
+    Wheat,
 }
 
 #[derive(Component)]
@@ -102,7 +105,15 @@ impl Plugin {
                 parent.spawn((
                     SpriteBundle {
                         texture: assets.load("empty.png"),
-                        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0001)),
+                        transform: Transform::from_translation(Vec3::new(
+                            0.0,
+                            -PLOT_SIZE.y / 2.0,
+                            0.0001,
+                        )),
+                        sprite: Sprite {
+                            anchor: bevy::sprite::Anchor::BottomCenter,
+                            ..default()
+                        },
                         ..default()
                     },
                     PlotOverlay,
@@ -132,7 +143,15 @@ impl Plugin {
             parent.spawn((
                 SpriteBundle {
                     texture: assets.load("empty.png"),
-                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0001)),
+                    transform: Transform::from_translation(Vec3::new(
+                        0.0,
+                        -PLOT_SIZE.y / 2.0,
+                        0.0001,
+                    )),
+                    sprite: Sprite {
+                        anchor: bevy::sprite::Anchor::BottomCenter,
+                        ..default()
+                    },
                     ..default()
                 },
                 PlotOverlay,
@@ -242,6 +261,37 @@ impl Plugin {
                                     action: PlotAction::Plant(Crop::Carrot),
                                 },
                             ));
+                            // clover
+
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("plant_clover.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(7.0 * TAU / 12.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(7.0 * TAU / 12.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Plant(Crop::Clover),
+                                },
+                            ));
+                            // wheat
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("plant_wheat.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(11.0 * TAU / 12.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(11.0 * TAU / 12.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Plant(Crop::Wheat),
+                                },
+                            ));
                         }
                         Plot::Growing(_, _) => {
                             v.spawn((
@@ -330,7 +380,7 @@ impl Plugin {
         mouse_button: Res<Input<MouseButton>>,
         q_plot_circle_button: Query<(Entity, &GlobalTransform, &PlotCircleButton)>,
     ) {
-        if mouse_button.just_pressed(MouseButton::Left) {
+        if mouse_button.just_released(MouseButton::Left) {
             for (entity, transform, button) in &q_plot_circle_button {
                 let dist = transform
                     .translation()
@@ -365,6 +415,8 @@ impl Plugin {
                         let mut text = q_compost_display_text.single_mut();
                         let number = match crop {
                             Crop::Carrot => CARROT_COST,
+                            Crop::Clover => CLOVER_COST,
+                            Crop::Wheat => WHEAT_COST,
                         };
 
                         text.sections[0].value = format!("{number}");
@@ -375,13 +427,14 @@ impl Plugin {
                         let mut text = q_compost_display_text.single_mut();
                         let number = match crop {
                             Crop::Carrot => CARROT_COMPOST,
+                            Crop::Clover => CLOVER_COMPOST,
+                            Crop::Wheat => WHEAT_COMPOST,
                         };
 
                         text.sections[0].value = format!("{number}");
                         text.sections[0].style.color = Color::GREEN;
                     }
                     PlotAction::Unlock => {
-
                         q_compost_display.single_mut().is_visible = true;
                         let mut text = q_compost_display_text.single_mut();
 
@@ -432,6 +485,8 @@ impl Plugin {
                     PlotAction::Plant(crop) => {
                         let cost = match crop {
                             Crop::Carrot => CARROT_COST,
+                            Crop::Clover => CLOVER_COST,
+                            Crop::Wheat => WHEAT_COST,
                         };
 
                         if compost.0 >= cost {
@@ -460,6 +515,8 @@ impl Plugin {
                     PlotAction::Compost(_) => {
                         compost.0 += match crop {
                             Crop::Carrot => CARROT_COMPOST,
+                            Crop::Clover => CLOVER_COMPOST,
+                            Crop::Wheat => WHEAT_COMPOST,
                         };
                         *plot = Plot::Empty;
                     }
@@ -482,8 +539,16 @@ impl Plugin {
                     *sprite = match plot {
                         Plot::Locked => assets.load("rocks.png"),
                         Plot::Empty => assets.load("empty.png"),
-                        Plot::Growing(_, _) => assets.load("growing.png"),
-                        Plot::Ready(_, _) => assets.load("grown.png"),
+                        Plot::Growing(crop, _) => match crop {
+                            Crop::Carrot => assets.load("carrot_growing.png"),
+                            Crop::Clover => assets.load("clover_growing.png"),
+                            Crop::Wheat => assets.load("wheat_growing.png"),
+                        },
+                        Plot::Ready(crop, _) => match crop {
+                            Crop::Carrot => assets.load("carrot_grown.png"),
+                            Crop::Clover => assets.load("clover_grown.png"),
+                            Crop::Wheat => assets.load("wheat_grown.png"),
+                        },
                     };
                 }
             }
@@ -503,6 +568,8 @@ impl Plugin {
                 Plot::Growing(crop, ref mut t) => {
                     match crop {
                         Crop::Carrot => *t += delta / CARROT_GROW_TIME,
+                        Crop::Clover => *t += delta / CLOVER_GROW_TIME,
+                        Crop::Wheat => *t += delta / WHEAT_GROW_TIME,
                     }
                     if *t >= 1.0 && active_plot_circle.0.is_none() {
                         *plot = Plot::Ready(crop.clone(), 0.0)
@@ -511,10 +578,14 @@ impl Plugin {
                 Plot::Ready(crop, ref mut t) => {
                     match crop {
                         Crop::Carrot => *t += delta / CARROT_DECAY_TIME,
+                        Crop::Clover => *t += delta / CLOVER_DECAY_TIME,
+                        Crop::Wheat => *t += delta / WHEAT_DECAY_TIME,
                     }
                     if *t >= 1.0 && active_plot_circle.0.is_none() {
                         compost.0 += match crop {
                             Crop::Carrot => CARROT_COMPOST,
+                            Crop::Clover => CLOVER_COMPOST,
+                            Crop::Wheat => WHEAT_COMPOST,
                         } / 2;
                         *plot = Plot::Empty;
                     }

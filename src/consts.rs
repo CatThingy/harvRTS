@@ -10,11 +10,22 @@ pub const PLOT_CIRCLE_BUTTON_RADIUS: f32 = 4.0;
 
 pub const PLOT_UNLOCK_COST: u32 = 150;
 
-
 pub const CARROT_GROW_TIME: f32 = 0.1;
 pub const CARROT_DECAY_TIME: f32 = 3.0;
 pub const CARROT_COST: u32 = 50;
 pub const CARROT_COMPOST: u32 = 60;
+
+pub const CLOVER_GROW_TIME: f32 = 0.1;
+pub const CLOVER_DECAY_TIME: f32 = 3.0;
+pub const CLOVER_COST: u32 = 0;
+pub const CLOVER_COMPOST: u32 = 30;
+
+pub const WHEAT_GROW_TIME: f32 = 0.1;
+pub const WHEAT_DECAY_TIME: f32 = 3.0;
+pub const WHEAT_COST: u32 = 20;
+pub const WHEAT_COMPOST: u32 = 30;
+
+// -----------------------------------------------------------------------
 
 pub const CARROT_MOVE_SPEED: f32 = 100.0;
 pub const CARROT_AGGRO_RANGE: f32 = 25.0;
@@ -24,6 +35,24 @@ pub const CARROT_ATTACK_RANGE: f32 = 10.0;
 pub const CARROT_ATTACK_SPEED: f32 = 1.0;
 pub const CARROT_HEALTH: f32 = 20.0;
 pub const CARROT_DAMAGE: f32 = 2.0;
+
+pub const CLOVER_MOVE_SPEED: f32 = 100.0;
+pub const CLOVER_AGGRO_RANGE: f32 = 25.0;
+pub const CLOVER_CHASE_RANGE: f32 = 50.0;
+pub const CLOVER_LEASH_RANGE: f32 = 100.0;
+pub const CLOVER_ATTACK_RANGE: f32 = 10.0;
+pub const CLOVER_ATTACK_SPEED: f32 = 1.0;
+pub const CLOVER_HEALTH: f32 = 20.0;
+pub const CLOVER_DAMAGE: f32 = 2.0;
+
+pub const WHEAT_MOVE_SPEED: f32 = 100.0;
+pub const WHEAT_AGGRO_RANGE: f32 = 25.0;
+pub const WHEAT_CHASE_RANGE: f32 = 50.0;
+pub const WHEAT_LEASH_RANGE: f32 = 100.0;
+pub const WHEAT_ATTACK_RANGE: f32 = 10.0;
+pub const WHEAT_ATTACK_SPEED: f32 = 1.0;
+pub const WHEAT_HEALTH: f32 = 20.0;
+pub const WHEAT_DAMAGE: f32 = 2.0;
 
 pub const ENEMY_MOVE_SPEED: f32 = 100.0;
 pub const ENEMY_AGGRO_RANGE: f32 = 25.0;

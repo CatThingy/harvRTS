@@ -348,30 +348,40 @@ impl Plugin {
         assets: Res<AssetServer>,
     ) {
         for harvest in ev_harvest.drain() {
+            let common = (
+                RigidBody::Dynamic,
+                Velocity::default(),
+                Friction {
+                    coefficient: 0.0,
+                    combine_rule: CoefficientCombineRule::Min,
+                },
+                LockedAxes::ROTATION_LOCKED_Z,
+                CollisionGroups {
+                    memberships: SELECTION_COLLISION_GROUP
+                        | UNIT_COLLISION_GROUP
+                        | FRIENDLY_COLLISION_GROUP,
+                    filters: UNIT_COLLISION_GROUP,
+                },
+                Damping {
+                    linear_damping: 20.0,
+                    angular_damping: 0.0,
+                },
+                Selectable::default(),
+                Friendly,
+                harvest.crop.clone(),
+            );
+
+            let mut pos = harvest.pos;
+            pos.z = 0.1;
             match harvest.crop {
                 Crop::Carrot => {
-                    let mut pos = harvest.pos;
-                    pos.z = 0.1;
                     cmd.spawn((
                         SpriteBundle {
                             texture: assets.load("carrot_unit.png"),
                             transform: Transform::from_translation(pos),
                             ..default()
                         },
-                        RigidBody::Dynamic,
-                        Velocity::default(),
                         Collider::ball(4.0),
-                        Friction {
-                            coefficient: 0.0,
-                            combine_rule: CoefficientCombineRule::Min,
-                        },
-                        LockedAxes::ROTATION_LOCKED_Z,
-                        CollisionGroups {
-                            memberships: SELECTION_COLLISION_GROUP
-                                | UNIT_COLLISION_GROUP
-                                | FRIENDLY_COLLISION_GROUP,
-                            filters: UNIT_COLLISION_GROUP,
-                        },
                         Unit::new(
                             CARROT_MOVE_SPEED,
                             CARROT_AGGRO_RANGE,
@@ -381,14 +391,8 @@ impl Plugin {
                             CARROT_ATTACK_SPEED,
                             CARROT_DAMAGE,
                         ),
-                        Damping {
-                            linear_damping: 20.0,
-                            angular_damping: 0.0,
-                        },
                         Health::new(CARROT_HEALTH),
-                        Selectable::default(),
-                        Friendly,
-                        Crop::Carrot,
+                        common,
                     ))
                     .with_children(|parent| {
                         parent.spawn((
@@ -431,6 +435,141 @@ impl Plugin {
                             Bar {
                                 value: CARROT_HEALTH,
                                 max: CARROT_HEALTH,
+                                size: 10.0,
+                            },
+                            HealthBar,
+                        ));
+                    });
+                }
+                Crop::Clover => {
+                    cmd.spawn((
+                        SpriteBundle {
+                            texture: assets.load("clover_unit.png"),
+                            transform: Transform::from_translation(pos),
+                            ..default()
+                        },
+                        Collider::ball(2.0),
+                        Unit::new(
+                            CLOVER_MOVE_SPEED,
+                            CLOVER_AGGRO_RANGE,
+                            CLOVER_CHASE_RANGE,
+                            CLOVER_ATTACK_RANGE,
+                            CLOVER_LEASH_RANGE,
+                            CLOVER_ATTACK_SPEED,
+                            CLOVER_DAMAGE,
+                        ),
+                        Health::new(CLOVER_HEALTH),
+                        common,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn((
+                            SpriteBundle {
+                                texture: assets.load("arrow.png"),
+                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                sprite: Sprite {
+                                    anchor: bevy::sprite::Anchor::TopCenter,
+                                    color: Color::YELLOW,
+                                    ..default()
+                                },
+                                visibility: Visibility::INVISIBLE,
+                                ..default()
+                            },
+                            SelectionIndicator,
+                        ));
+                        parent.spawn((
+                            SpriteBundle {
+                                texture: assets.load("arrow.png"),
+                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                sprite: Sprite {
+                                    anchor: bevy::sprite::Anchor::TopCenter,
+                                    ..default()
+                                },
+                                visibility: Visibility::INVISIBLE,
+                                ..default()
+                            },
+                            HoverIndicator,
+                        ));
+                        parent.spawn((
+                            SpriteBundle {
+                                transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
+                                sprite: Sprite {
+                                    custom_size: Some(Vec2::new(2.0, 1.0)),
+                                    color: Color::RED,
+                                    ..default()
+                                },
+                                ..default()
+                            },
+                            Bar {
+                                value: CLOVER_HEALTH,
+                                max: CLOVER_HEALTH,
+                                size: 10.0,
+                            },
+                            HealthBar,
+                        ));
+                    });
+                }
+
+                Crop::Wheat => {
+                    cmd.spawn((
+                        SpriteBundle {
+                            texture: assets.load("wheat_unit.png"),
+                            transform: Transform::from_translation(pos),
+                            ..default()
+                        },
+                        Collider::ball(4.0),
+                        Unit::new(
+                            WHEAT_MOVE_SPEED,
+                            WHEAT_AGGRO_RANGE,
+                            WHEAT_CHASE_RANGE,
+                            WHEAT_ATTACK_RANGE,
+                            WHEAT_LEASH_RANGE,
+                            WHEAT_ATTACK_SPEED,
+                            WHEAT_DAMAGE,
+                        ),
+                        Health::new(CARROT_HEALTH),
+                        common,
+                    ))
+                    .with_children(|parent| {
+                        parent.spawn((
+                            SpriteBundle {
+                                texture: assets.load("arrow.png"),
+                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                sprite: Sprite {
+                                    anchor: bevy::sprite::Anchor::TopCenter,
+                                    color: Color::YELLOW,
+                                    ..default()
+                                },
+                                visibility: Visibility::INVISIBLE,
+                                ..default()
+                            },
+                            SelectionIndicator,
+                        ));
+                        parent.spawn((
+                            SpriteBundle {
+                                texture: assets.load("arrow.png"),
+                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                sprite: Sprite {
+                                    anchor: bevy::sprite::Anchor::TopCenter,
+                                    ..default()
+                                },
+                                visibility: Visibility::INVISIBLE,
+                                ..default()
+                            },
+                            HoverIndicator,
+                        ));
+                        parent.spawn((
+                            SpriteBundle {
+                                transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
+                                sprite: Sprite {
+                                    custom_size: Some(Vec2::new(2.0, 1.0)),
+                                    color: Color::RED,
+                                    ..default()
+                                },
+                                ..default()
+                            },
+                            Bar {
+                                value: WHEAT_HEALTH,
+                                max: WHEAT_HEALTH,
                                 size: 10.0,
                             },
                             HealthBar,
@@ -538,6 +677,8 @@ impl Plugin {
             let amount = -delta
                 * match crop {
                     Crop::Carrot => CARROT_HEALTH / (CARROT_DECAY_TIME + CARROT_GROW_TIME),
+                    Crop::Clover => CLOVER_HEALTH / (CLOVER_DECAY_TIME + CLOVER_GROW_TIME),
+                    Crop::Wheat => WHEAT_HEALTH / (WHEAT_DECAY_TIME + WHEAT_GROW_TIME),
                 };
             health_change.send(HealthChange { target, amount });
         }
