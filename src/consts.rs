@@ -8,6 +8,9 @@ pub const PLOT_CIRCLE_RADIUS: f32 = 24.0;
 
 pub const PLOT_CIRCLE_BUTTON_RADIUS: f32 = 4.0;
 
+pub const PLOT_UNLOCK_COST: u32 = 150;
+
+
 pub const CARROT_GROW_TIME: f32 = 0.1;
 pub const CARROT_DECAY_TIME: f32 = 3.0;
 pub const CARROT_COST: u32 = 50;

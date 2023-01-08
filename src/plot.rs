@@ -8,6 +8,7 @@ use crate::{
     consts::{
         CARROT_COMPOST, CARROT_COST, CARROT_DECAY_TIME, CARROT_GROW_TIME,
         PLOT_CIRCLE_BUTTON_RADIUS, PLOT_CIRCLE_RADIUS, PLOT_COLLISION_GROUP, PLOT_SIZE,
+        PLOT_UNLOCK_COST,
     },
     game::Compost,
     selection::Selectable,
@@ -18,6 +19,7 @@ use crate::{
 #[derive(Component, Default, Debug)]
 pub enum Plot {
     #[default]
+    Locked,
     Empty,
     Growing(Crop, f32),
     Ready(Crop, f32),
@@ -50,6 +52,7 @@ enum PlotAction {
     Harvest(Crop),
     Cancel,
     Compost(Crop),
+    Unlock,
 }
 
 pub struct HarvestEvent {
@@ -71,7 +74,6 @@ impl Plugin {
             Vec2::new(1.0, 0.0),
             Vec2::new(0.0, 1.0),
             Vec2::new(-1.0, 0.0),
-            Vec2::new(0.0, -1.0),
         ] {
             cmd.spawn((
                 SpriteBundle {
@@ -100,13 +102,42 @@ impl Plugin {
                 parent.spawn((
                     SpriteBundle {
                         texture: assets.load("empty.png"),
-                        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.1)),
+                        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0001)),
                         ..default()
                     },
                     PlotOverlay,
                 ));
             });
         }
+        cmd.spawn((
+            SpriteBundle {
+                texture: assets.load("plot.png"),
+                sprite: Sprite {
+                    custom_size: Some(PLOT_SIZE),
+                    ..default()
+                },
+
+                transform: Transform::from_translation(Vec3::new(0.0, -PLOT_SIZE.y, 0.0)),
+                ..default()
+            },
+            Plot::Empty,
+            Collider::cuboid(PLOT_SIZE.x / 2.0, PLOT_SIZE.y / 2.0),
+            Sensor,
+            CollisionGroups {
+                memberships: PLOT_COLLISION_GROUP,
+                filters: Group::NONE,
+            },
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                SpriteBundle {
+                    texture: assets.load("empty.png"),
+                    transform: Transform::from_translation(Vec3::new(0.0, 0.0, 0.0001)),
+                    ..default()
+                },
+                PlotOverlay,
+            ));
+        });
     }
 
     fn plot_click(
@@ -179,6 +210,22 @@ impl Plugin {
                             });
                         });
                     match plot {
+                        Plot::Locked => {
+                            v.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("compost.png"),
+                                    transform: Transform::from_translation(Vec3 {
+                                        x: f32::cos(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        y: f32::sin(TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
+                                        z: 0.1,
+                                    }),
+                                    ..default()
+                                },
+                                PlotCircleButton {
+                                    action: PlotAction::Unlock,
+                                },
+                            ));
+                        }
                         Plot::Empty => {
                             //  carrot
                             v.spawn((
@@ -333,6 +380,14 @@ impl Plugin {
                         text.sections[0].value = format!("{number}");
                         text.sections[0].style.color = Color::GREEN;
                     }
+                    PlotAction::Unlock => {
+
+                        q_compost_display.single_mut().is_visible = true;
+                        let mut text = q_compost_display_text.single_mut();
+
+                        text.sections[0].value = format!("{PLOT_UNLOCK_COST}");
+                        text.sections[0].style.color = Color::RED;
+                    }
                     _ => {}
                 }
                 return;
@@ -362,6 +417,17 @@ impl Plugin {
             let (mut plot, transform) = q_plots.get_mut(target).unwrap();
 
             match &*plot {
+                Plot::Locked => match event {
+                    PlotAction::Unlock => {
+                        if compost.0 >= PLOT_UNLOCK_COST {
+                            *plot = Plot::Empty;
+                            compost.0 -= PLOT_UNLOCK_COST;
+                        }
+                    }
+                    _ => {
+                        unreachable!()
+                    }
+                },
                 Plot::Empty => match event {
                     PlotAction::Plant(crop) => {
                         let cost = match crop {
@@ -373,20 +439,17 @@ impl Plugin {
                             compost.0 -= cost;
                         }
                     }
-                    PlotAction::Harvest(_) | PlotAction::Cancel | PlotAction::Compost(_) => {
-                        error!("can't harvest or cancel an empty plot")
+                    _ => {
+                        unreachable!();
                     }
                 },
                 Plot::Growing(_, _) => match event {
-                    PlotAction::Plant(_) | PlotAction::Harvest(_) | PlotAction::Compost(_) => {
-                        error!("can't plant in or harvest a growing plot")
-                    }
                     PlotAction::Cancel => *plot = Plot::Empty,
+                    _ => {
+                        unreachable!();
+                    }
                 },
                 Plot::Ready(crop, _) => match event {
-                    PlotAction::Plant(_) | PlotAction::Cancel => {
-                        error!("can't plant in a grown plot")
-                    }
                     PlotAction::Harvest(_) => {
                         harvest_events.send(HarvestEvent {
                             crop: crop.clone(),
@@ -399,6 +462,9 @@ impl Plugin {
                             Crop::Carrot => CARROT_COMPOST,
                         };
                         *plot = Plot::Empty;
+                    }
+                    _ => {
+                        unreachable!();
                     }
                 },
             }
@@ -414,6 +480,7 @@ impl Plugin {
             for child in children.iter() {
                 if let Ok(mut sprite) = q_overlay.get_mut(*child) {
                     *sprite = match plot {
+                        Plot::Locked => assets.load("rocks.png"),
                         Plot::Empty => assets.load("empty.png"),
                         Plot::Growing(_, _) => assets.load("growing.png"),
                         Plot::Ready(_, _) => assets.load("grown.png"),
@@ -432,7 +499,7 @@ impl Plugin {
         let delta = time.delta_seconds();
         for mut plot in &mut plots {
             match &mut *plot {
-                Plot::Empty => {}
+                Plot::Empty | Plot::Locked => {}
                 Plot::Growing(crop, ref mut t) => {
                     match crop {
                         Crop::Carrot => *t += delta / CARROT_GROW_TIME,

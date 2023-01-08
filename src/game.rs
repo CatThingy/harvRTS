@@ -90,7 +90,7 @@ impl Plugin {
                     transform: Transform::from_translation(Vec3::new(
                         (rng.f32() * 0.25 + 1.0) * spawn_area.x * x_sign,
                         (rng.f32() * 0.25 + 1.0) * spawn_area.y * y_sign,
-                        0.0,
+                        0.1,
                     )),
                     ..default()
                 },
