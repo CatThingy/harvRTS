@@ -7,7 +7,7 @@ on:
 
 env:
   # update with the name of the main binary
-  binary: bevy_github_ci_template
+  binary: ld52
   add_binaries_to_github_release: true
   #itch_target: <itch.io-username>/<game-name>
 
@@ -76,7 +76,7 @@ jobs:
           override: true
       - name: install dependencies
         run: |
-          sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
+          sudo apt-get update; sudo apt-get install pkg-config libx11-dev libasound2-dev libudev-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libwayland-dev libxcbcommon-dev
 
       - name: Build
         run: |
