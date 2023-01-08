@@ -358,11 +358,11 @@ impl bevy::app::Plugin for Plugin {
             .init_resource::<Events<PlotAction>>()
             .init_resource::<Events<HarvestEvent>>()
             .add_enter_system(GameState::InGame, Self::init)
-            .add_system(Self::remove_plot_circle.before("plot_click"))
-            .add_system(Self::plot_click.label("plot_click"))
-            .add_system(Self::plot_button_click.after("plot_click"))
-            .add_system(Self::handle_plot_event)
-            .add_system(Self::update_plot_overlay)
-            .add_system(Self::update_plot);
+            .add_system(Self::remove_plot_circle.run_in_state(GameState::InGame).before("plot_click"))
+            .add_system(Self::plot_click.run_in_state(GameState::InGame).label("plot_click"))
+            .add_system(Self::plot_button_click.run_in_state(GameState::InGame).after("plot_click"))
+            .add_system(Self::handle_plot_event.run_in_state(GameState::InGame))
+            .add_system(Self::update_plot_overlay.run_in_state(GameState::InGame))
+            .add_system(Self::update_plot.run_in_state(GameState::InGame));
     }
 }

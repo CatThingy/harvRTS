@@ -1,16 +1,18 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use iyes_loopless::prelude::*;
 
 use crate::{
     consts::*,
     health::{Dead, Health, HealthBar, HealthChange},
     plot::{Crop, HarvestEvent},
-    selection::{Selectable, SelectionIndicator},
+    selection::{HoverIndicator, Selectable, SelectionIndicator},
     utils::{Bar, MousePosition},
+    GameState,
 };
 
 #[derive(Component, Default, Reflect)]
-struct Unit {
+pub struct Unit {
     state: UnitState,
     command: Option<UnitCommand>,
     move_speed: f32,
@@ -25,7 +27,7 @@ struct Unit {
 }
 
 impl Unit {
-    fn new(
+    pub fn new(
         move_speed: f32,
         aggro_range: f32,
         chase_range: f32,
@@ -67,14 +69,14 @@ trait Side {
 }
 
 #[derive(Component)]
-struct Enemy;
+pub struct Enemy;
 
 impl Side for Enemy {
     const ATTACKS_GROUP: Group = FRIENDLY_COLLISION_GROUP;
 }
 
 #[derive(Component)]
-struct Friendly;
+pub struct Friendly;
 
 impl Side for Friendly {
     const ATTACKS_GROUP: Group = ENEMY_COLLISION_GROUP;
@@ -385,8 +387,10 @@ impl Plugin {
                         parent.spawn((
                             SpriteBundle {
                                 texture: assets.load("arrow.png"),
+                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
                                 sprite: Sprite {
                                     anchor: bevy::sprite::Anchor::TopCenter,
+                                    color: Color::YELLOW,
                                     ..default()
                                 },
                                 visibility: Visibility::INVISIBLE,
@@ -394,9 +398,45 @@ impl Plugin {
                             },
                             SelectionIndicator,
                         ));
+                        parent.spawn((
+                            SpriteBundle {
+                                texture: assets.load("arrow.png"),
+                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                sprite: Sprite {
+                                    anchor: bevy::sprite::Anchor::TopCenter,
+                                    ..default()
+                                },
+                                visibility: Visibility::INVISIBLE,
+                                ..default()
+                            },
+                            HoverIndicator,
+                        ));
+                        parent.spawn((
+                            SpriteBundle {
+                                transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
+                                sprite: Sprite {
+                                    custom_size: Some(Vec2::new(2.0, 1.0)),
+                                    color: Color::RED,
+                                    ..default()
+                                },
+                                ..default()
+                            },
+                            Bar {
+                                value: CARROT_HEALTH,
+                                max: CARROT_HEALTH,
+                                size: 10.0,
+                            },
+                            HealthBar,
+                        ));
                     });
                 }
             }
+        }
+    }
+
+    fn enemy_spawn(mut q_enemy: Query<&mut Unit, Added<Enemy>>) {
+        for mut enemy in &mut q_enemy {
+            enemy.command = Some(UnitCommand::AttackMove(Vec2::ZERO));
         }
     }
 
@@ -425,9 +465,17 @@ impl Plugin {
                     linear_damping: 20.0,
                     angular_damping: 0.0,
                 },
-                Unit::default(),
+                Unit::new(
+                    ENEMY_MOVE_SPEED,
+                    ENEMY_AGGRO_RANGE,
+                    ENEMY_CHASE_RANGE,
+                    ENEMY_ATTACK_RANGE,
+                    ENEMY_LEASH_RANGE,
+                    ENEMY_ATTACK_SPEED,
+                    ENEMY_DAMAGE,
+                ),
                 Enemy,
-                Health::new(5.0),
+                Health::new(ENEMY_HEALTH),
             ))
             .with_children(|parent| {
                 parent.spawn((
@@ -441,8 +489,8 @@ impl Plugin {
                         ..default()
                     },
                     Bar {
-                        value: 5.0,
-                        max: 5.0,
+                        value: ENEMY_HEALTH,
+                        max: ENEMY_HEALTH,
                         size: 10.0,
                     },
                     HealthBar,
@@ -480,11 +528,12 @@ impl bevy::app::Plugin for Plugin {
             .register_type::<Option<UnitCommand>>()
             .register_type::<UnitCommand>()
             .register_type::<UnitState>()
-            .add_system(Self::handle_harvest_event)
-            .add_system(Self::debug_spawn_enemy)
-            .add_system(Self::process_unit_state)
-            .add_system(Self::process_command)
-            .add_system(Self::update_unit_state::<Friendly>)
-            .add_system(Self::update_unit_state::<Enemy>);
+            .add_system(Self::handle_harvest_event.run_in_state(GameState::InGame))
+            .add_system(Self::debug_spawn_enemy.run_in_state(GameState::InGame))
+            .add_system(Self::process_unit_state.run_in_state(GameState::InGame))
+            .add_system(Self::process_command.run_in_state(GameState::InGame))
+            .add_system(Self::enemy_spawn.run_in_state(GameState::InGame))
+            .add_system(Self::update_unit_state::<Friendly>.run_in_state(GameState::InGame))
+            .add_system(Self::update_unit_state::<Enemy>.run_in_state(GameState::InGame));
     }
 }

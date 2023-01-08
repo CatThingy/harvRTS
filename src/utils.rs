@@ -1,6 +1,7 @@
 use bevy::prelude::*;
+use iyes_loopless::prelude::*;
 
-use crate::{health::Dead, MainCamera};
+use crate::{health::Dead, GameState, MainCamera};
 
 #[derive(Default, Deref, Resource)]
 pub struct MousePosition(pub Vec3);
@@ -47,8 +48,8 @@ impl Plugin {
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MousePosition>()
-            .add_system(Self::update_bar)
-            .add_system(Self::update_mouse_position)
-            .add_system(Self::handle_dead);
+            .add_system(Self::update_bar.run_in_state(GameState::InGame))
+            .add_system(Self::update_mouse_position.run_in_state(GameState::InGame))
+            .add_system(Self::handle_dead.run_in_state(GameState::InGame));
     }
 }
