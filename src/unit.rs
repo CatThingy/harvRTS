@@ -11,7 +11,7 @@ use crate::{
     GameState,
 };
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default)]
 pub struct Unit {
     state: UnitState,
     command: Option<UnitCommand>,
@@ -49,7 +49,7 @@ impl Unit {
     }
 }
 
-#[derive(Default, Reflect)]
+#[derive(Default)]
 enum UnitState {
     #[default]
     Idle,
@@ -58,7 +58,7 @@ enum UnitState {
     Attack(Entity),
 }
 
-#[derive(Reflect, FromReflect, Clone)]
+#[derive(Clone)]
 enum UnitCommand {
     Move(Vec2),
     AttackMove(Vec2),
@@ -629,65 +629,6 @@ impl Plugin {
         }
     }
 
-    fn debug_spawn_enemy(
-        mut cmd: Commands,
-        mouse_pos: Res<MousePosition>,
-        keyboard: Res<Input<KeyCode>>,
-        assets: Res<AssetServer>,
-    ) {
-        if keyboard.just_pressed(KeyCode::E) {
-            cmd.spawn((
-                SpriteBundle {
-                    texture: assets.load("enemy.png"),
-                    transform: Transform::from_translation(mouse_pos.0),
-                    ..default()
-                },
-                RigidBody::Dynamic,
-                Velocity::default(),
-                Collider::ball(4.0),
-                LockedAxes::ROTATION_LOCKED_Z,
-                CollisionGroups {
-                    memberships: UNIT_COLLISION_GROUP | ENEMY_COLLISION_GROUP,
-                    filters: UNIT_COLLISION_GROUP,
-                },
-                Damping {
-                    linear_damping: 20.0,
-                    angular_damping: 0.0,
-                },
-                Unit::new(
-                    ENEMY_MOVE_SPEED,
-                    ENEMY_AGGRO_RANGE,
-                    ENEMY_CHASE_RANGE,
-                    ENEMY_ATTACK_RANGE,
-                    ENEMY_LEASH_RANGE,
-                    ENEMY_ATTACK_SPEED,
-                    ENEMY_DAMAGE,
-                ),
-                Enemy,
-                Health::new(ENEMY_HEALTH),
-            ))
-            .with_children(|parent| {
-                parent.spawn((
-                    SpriteBundle {
-                        transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
-                        sprite: Sprite {
-                            custom_size: Some(Vec2::new(2.0, 1.0)),
-                            color: Color::RED,
-                            ..default()
-                        },
-                        ..default()
-                    },
-                    Bar {
-                        value: ENEMY_HEALTH,
-                        max: ENEMY_HEALTH,
-                        size: 10.0,
-                    },
-                    HealthBar,
-                ));
-            });
-        }
-    }
-
     fn process_command(
         mut q_unit: Query<(&mut Unit, &Selectable)>,
         mouse_buttons: Res<Input<MouseButton>>,
@@ -740,12 +681,7 @@ impl Plugin {
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Unit>()
-            .register_type::<Option<UnitCommand>>()
-            .register_type::<UnitCommand>()
-            .register_type::<UnitState>()
-            .add_system(Self::handle_harvest_event.run_in_state(GameState::InGame))
-            .add_system(Self::debug_spawn_enemy.run_in_state(GameState::InGame))
+        app.add_system(Self::handle_harvest_event.run_in_state(GameState::InGame))
             .add_system(Self::process_unit_state.run_in_state(GameState::InGame))
             .add_system(Self::process_command.run_in_state(GameState::InGame))
             .add_system(Self::enemy_spawn.run_in_state(GameState::InGame))

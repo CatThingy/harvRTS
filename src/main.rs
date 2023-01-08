@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
@@ -31,8 +30,6 @@ fn main() {
             ..default()
         })
         .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_plugin(RapierDebugRenderPlugin::default())
-        .add_plugin(WorldInspectorPlugin)
         .add_loopless_state(GameState::MainMenu)
         .add_plugin(utils::Plugin)
         .add_plugin(main_menu::Plugin)
