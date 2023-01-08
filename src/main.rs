@@ -5,7 +5,7 @@ use iyes_loopless::prelude::*;
 
 mod consts;
 mod game;
-mod game_over;
+mod game_menu;
 mod health;
 mod main_menu;
 mod plot;
@@ -38,7 +38,7 @@ fn main() {
         .add_plugin(main_menu::Plugin)
         .add_plugin(plot::Plugin)
         .add_plugin(unit::Plugin)
-        .add_plugin(game_over::Plugin)
+        .add_plugin(game_menu::Plugin)
         .add_plugin(health::Plugin)
         .add_plugin(game::Plugin)
         .add_plugin(selection::Plugin)

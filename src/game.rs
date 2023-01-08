@@ -5,7 +5,8 @@ use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::consts::*;
-use crate::game_over::GameMenu;
+use crate::game_menu::GameMenu;
+use crate::game_menu::GameTimer;
 use crate::health::Health;
 use crate::health::HealthBar;
 use crate::unit::Enemy;
@@ -41,6 +42,10 @@ impl Plugin {
             Health::new(100.0),
             Rose,
             RigidBody::Fixed,
+            Friction {
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
             Collider::ball(4.0),
             CollisionGroups {
                 memberships: UNIT_COLLISION_GROUP | FRIENDLY_COLLISION_GROUP,
@@ -137,16 +142,25 @@ impl Plugin {
             panel.display = Display::Flex;
         }
     }
+
+    fn update_timer(mut q_timer: Query<&mut Text, With<GameTimer>>, spawner: Res<Spawner>) {
+        let mut timer = q_timer.single_mut();
+
+        let seconds = spawner.total.as_secs();
+
+        timer.sections[0].value = format!("{:<02}:{:<02}", seconds / 60, seconds % 60);
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Spawner {
-            enemy: Timer::from_seconds(5.0, TimerMode::Repeating),
+            enemy: Timer::from_seconds(7.0, TimerMode::Repeating),
             total: Duration::default(),
         })
         .add_enter_system(GameState::InGame, Self::init)
         .add_system(Self::end_game.run_in_state(GameState::InGame))
+        .add_system(Self::update_timer.run_in_state(GameState::InGame))
         .add_system(Self::enemy_spawning.run_in_state(GameState::InGame));
     }
 }

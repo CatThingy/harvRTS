@@ -359,6 +359,10 @@ impl Plugin {
                         RigidBody::Dynamic,
                         Velocity::default(),
                         Collider::ball(4.0),
+                        Friction {
+                            coefficient: 0.0,
+                            combine_rule: CoefficientCombineRule::Min,
+                        },
                         LockedAxes::ROTATION_LOCKED_Z,
                         CollisionGroups {
                             memberships: SELECTION_COLLISION_GROUP
@@ -520,6 +524,16 @@ impl Plugin {
             }
         }
     }
+
+    fn flip_unit(mut q_sprite: Query<(&mut Sprite, &Velocity), With<Unit>>) {
+        for (mut sprite, vel) in &mut q_sprite {
+            if vel.linvel.x > 0.0 {
+                sprite.flip_x = false;
+            } else if vel.linvel.x < 0.1 {
+                sprite.flip_x = true;
+            }
+        }
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
@@ -533,6 +547,7 @@ impl bevy::app::Plugin for Plugin {
             .add_system(Self::process_unit_state.run_in_state(GameState::InGame))
             .add_system(Self::process_command.run_in_state(GameState::InGame))
             .add_system(Self::enemy_spawn.run_in_state(GameState::InGame))
+            .add_system(Self::flip_unit.run_in_state(GameState::InGame))
             .add_system(Self::update_unit_state::<Friendly>.run_in_state(GameState::InGame))
             .add_system(Self::update_unit_state::<Enemy>.run_in_state(GameState::InGame));
     }

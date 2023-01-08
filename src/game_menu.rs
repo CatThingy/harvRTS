@@ -13,6 +13,9 @@ pub struct GameMenu;
 pub struct DeathText;
 
 #[derive(Component)]
+pub struct GameTimer;
+
+#[derive(Component)]
 pub struct MainMenuButton;
 
 pub struct Plugin;
@@ -26,7 +29,8 @@ impl Plugin {
                         width: Val::Percent(100.0),
                         height: Val::Percent(100.0),
                     },
-                    align_items: AlignItems::Center,
+                    align_items: AlignItems::FlexStart,
+                    justify_content: JustifyContent::Center,
                     ..default()
                 },
                 background_color: Color::NONE.into(),
@@ -35,6 +39,18 @@ impl Plugin {
             Root,
         ))
         .with_children(|root| {
+            root.spawn((
+                TextBundle::from_section(
+                    "0:00",
+                    TextStyle {
+                        font: assets.load("fonts/ModeSeven.ttf"),
+                        font_size: 60.0,
+                        color: Color::WHITE,
+                    },
+                ),
+                GameTimer,
+            ));
+
             root.spawn((
                 NodeBundle {
                     style: Style {
