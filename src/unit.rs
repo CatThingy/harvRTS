@@ -75,7 +75,7 @@ impl Side for Enemy {
     const ATTACKS_GROUP: Group = FRIENDLY_COLLISION_GROUP;
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Friendly;
 
 impl Side for Friendly {
@@ -347,6 +347,7 @@ impl Plugin {
         mut ev_harvest: ResMut<Events<HarvestEvent>>,
         assets: Res<AssetServer>,
     ) {
+        let rng = fastrand::Rng::default();
         for harvest in ev_harvest.drain() {
             let common = (
                 RigidBody::Dynamic,
@@ -375,206 +376,248 @@ impl Plugin {
             pos.z = 0.1;
             match harvest.crop {
                 Crop::Carrot => {
-                    cmd.spawn((
-                        SpriteBundle {
-                            texture: assets.load("carrot_unit.png"),
-                            transform: Transform::from_translation(pos),
-                            ..default()
-                        },
-                        Collider::ball(4.0),
-                        Unit::new(
-                            CARROT_MOVE_SPEED,
-                            CARROT_AGGRO_RANGE,
-                            CARROT_CHASE_RANGE,
-                            CARROT_ATTACK_RANGE,
-                            CARROT_LEASH_RANGE,
-                            CARROT_ATTACK_SPEED,
-                            CARROT_DAMAGE,
-                        ),
-                        Health::new(CARROT_HEALTH),
-                        common,
-                    ))
-                    .with_children(|parent| {
-                        parent.spawn((
+                    for _ in 0..CARROT_COUNT {
+                        let offset =
+                            (Vec2::new(rng.f32() - 0.5, rng.f32() - 0.5) * PLOT_SIZE).extend(0.0);
+                        cmd.spawn((
                             SpriteBundle {
-                                texture: assets.load("arrow.png"),
-                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                texture: assets.load("carrot_unit.png"),
+                                transform: Transform::from_translation(pos + offset),
                                 sprite: Sprite {
-                                    anchor: bevy::sprite::Anchor::TopCenter,
-                                    color: Color::YELLOW,
-                                    ..default()
-                                },
-                                visibility: Visibility::INVISIBLE,
-                                ..default()
-                            },
-                            SelectionIndicator,
-                        ));
-                        parent.spawn((
-                            SpriteBundle {
-                                texture: assets.load("arrow.png"),
-                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
-                                sprite: Sprite {
-                                    anchor: bevy::sprite::Anchor::TopCenter,
-                                    ..default()
-                                },
-                                visibility: Visibility::INVISIBLE,
-                                ..default()
-                            },
-                            HoverIndicator,
-                        ));
-                        parent.spawn((
-                            SpriteBundle {
-                                transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
-                                sprite: Sprite {
-                                    custom_size: Some(Vec2::new(2.0, 1.0)),
-                                    color: Color::RED,
+                                    anchor: bevy::sprite::Anchor::BottomCenter,
                                     ..default()
                                 },
                                 ..default()
                             },
-                            Bar {
-                                value: CARROT_HEALTH,
-                                max: CARROT_HEALTH,
-                                size: 10.0,
-                            },
-                            HealthBar,
-                        ));
-                    });
+                            Collider::ball(4.0),
+                            Unit::new(
+                                CARROT_MOVE_SPEED,
+                                CARROT_AGGRO_RANGE,
+                                CARROT_CHASE_RANGE,
+                                CARROT_ATTACK_RANGE,
+                                CARROT_LEASH_RANGE,
+                                CARROT_ATTACK_SPEED,
+                                CARROT_DAMAGE,
+                            ),
+                            Health::new(CARROT_HEALTH),
+                            common.clone(),
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("arrow.png"),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -5.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        anchor: bevy::sprite::Anchor::TopCenter,
+                                        color: Color::YELLOW,
+                                        ..default()
+                                    },
+                                    visibility: Visibility::INVISIBLE,
+                                    ..default()
+                                },
+                                SelectionIndicator,
+                            ));
+                            parent.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("arrow.png"),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -5.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        anchor: bevy::sprite::Anchor::TopCenter,
+                                        ..default()
+                                    },
+                                    visibility: Visibility::INVISIBLE,
+                                    ..default()
+                                },
+                                HoverIndicator,
+                            ));
+                            parent.spawn((
+                                SpriteBundle {
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -4.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        custom_size: Some(Vec2::new(2.0, 1.0)),
+                                        color: Color::RED,
+                                        ..default()
+                                    },
+                                    ..default()
+                                },
+                                Bar {
+                                    value: CARROT_HEALTH,
+                                    max: CARROT_HEALTH,
+                                    size: 10.0,
+                                },
+                                HealthBar,
+                            ));
+                        });
+                    }
                 }
                 Crop::Clover => {
-                    cmd.spawn((
-                        SpriteBundle {
-                            texture: assets.load("clover_unit.png"),
-                            transform: Transform::from_translation(pos),
-                            ..default()
-                        },
-                        Collider::ball(2.0),
-                        Unit::new(
-                            CLOVER_MOVE_SPEED,
-                            CLOVER_AGGRO_RANGE,
-                            CLOVER_CHASE_RANGE,
-                            CLOVER_ATTACK_RANGE,
-                            CLOVER_LEASH_RANGE,
-                            CLOVER_ATTACK_SPEED,
-                            CLOVER_DAMAGE,
-                        ),
-                        Health::new(CLOVER_HEALTH),
-                        common,
-                    ))
-                    .with_children(|parent| {
-                        parent.spawn((
+                    for _ in 0..CLOVER_COUNT {
+                        let offset =
+                            (Vec2::new(rng.f32() - 0.5, rng.f32() - 0.5) * PLOT_SIZE).extend(0.0);
+                        cmd.spawn((
                             SpriteBundle {
-                                texture: assets.load("arrow.png"),
-                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                texture: assets.load("clover_unit.png"),
+                                transform: Transform::from_translation(pos + offset),
                                 sprite: Sprite {
-                                    anchor: bevy::sprite::Anchor::TopCenter,
-                                    color: Color::YELLOW,
-                                    ..default()
-                                },
-                                visibility: Visibility::INVISIBLE,
-                                ..default()
-                            },
-                            SelectionIndicator,
-                        ));
-                        parent.spawn((
-                            SpriteBundle {
-                                texture: assets.load("arrow.png"),
-                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
-                                sprite: Sprite {
-                                    anchor: bevy::sprite::Anchor::TopCenter,
-                                    ..default()
-                                },
-                                visibility: Visibility::INVISIBLE,
-                                ..default()
-                            },
-                            HoverIndicator,
-                        ));
-                        parent.spawn((
-                            SpriteBundle {
-                                transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
-                                sprite: Sprite {
-                                    custom_size: Some(Vec2::new(2.0, 1.0)),
-                                    color: Color::RED,
+                                    anchor: bevy::sprite::Anchor::BottomCenter,
                                     ..default()
                                 },
                                 ..default()
                             },
-                            Bar {
-                                value: CLOVER_HEALTH,
-                                max: CLOVER_HEALTH,
-                                size: 10.0,
-                            },
-                            HealthBar,
-                        ));
-                    });
+                            Collider::ball(2.0),
+                            Unit::new(
+                                CLOVER_MOVE_SPEED,
+                                CLOVER_AGGRO_RANGE,
+                                CLOVER_CHASE_RANGE,
+                                CLOVER_ATTACK_RANGE,
+                                CLOVER_LEASH_RANGE,
+                                CLOVER_ATTACK_SPEED,
+                                CLOVER_DAMAGE,
+                            ),
+                            Health::new(CLOVER_HEALTH),
+                            common.clone(),
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("arrow.png"),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -5.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        anchor: bevy::sprite::Anchor::TopCenter,
+                                        color: Color::YELLOW,
+                                        ..default()
+                                    },
+                                    visibility: Visibility::INVISIBLE,
+                                    ..default()
+                                },
+                                SelectionIndicator,
+                            ));
+                            parent.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("arrow.png"),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -5.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        anchor: bevy::sprite::Anchor::TopCenter,
+                                        ..default()
+                                    },
+                                    visibility: Visibility::INVISIBLE,
+                                    ..default()
+                                },
+                                HoverIndicator,
+                            ));
+                            parent.spawn((
+                                SpriteBundle {
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -4.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        custom_size: Some(Vec2::new(2.0, 1.0)),
+                                        color: Color::RED,
+                                        ..default()
+                                    },
+                                    ..default()
+                                },
+                                Bar {
+                                    value: CLOVER_HEALTH,
+                                    max: CLOVER_HEALTH,
+                                    size: 10.0,
+                                },
+                                HealthBar,
+                            ));
+                        });
+                    }
                 }
 
                 Crop::Wheat => {
-                    cmd.spawn((
-                        SpriteBundle {
-                            texture: assets.load("wheat_unit.png"),
-                            transform: Transform::from_translation(pos),
-                            ..default()
-                        },
-                        Collider::ball(4.0),
-                        Unit::new(
-                            WHEAT_MOVE_SPEED,
-                            WHEAT_AGGRO_RANGE,
-                            WHEAT_CHASE_RANGE,
-                            WHEAT_ATTACK_RANGE,
-                            WHEAT_LEASH_RANGE,
-                            WHEAT_ATTACK_SPEED,
-                            WHEAT_DAMAGE,
-                        ),
-                        Health::new(CARROT_HEALTH),
-                        common,
-                    ))
-                    .with_children(|parent| {
-                        parent.spawn((
+                    for _ in 0..WHEAT_COUNT {
+                        let offset =
+                            (Vec2::new(rng.f32() - 0.5, rng.f32() - 0.5) * PLOT_SIZE).extend(0.0);
+                        cmd.spawn((
                             SpriteBundle {
-                                texture: assets.load("arrow.png"),
-                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
+                                texture: assets.load("wheat_unit.png"),
+                                transform: Transform::from_translation(pos + offset),
                                 sprite: Sprite {
-                                    anchor: bevy::sprite::Anchor::TopCenter,
-                                    color: Color::YELLOW,
-                                    ..default()
-                                },
-                                visibility: Visibility::INVISIBLE,
-                                ..default()
-                            },
-                            SelectionIndicator,
-                        ));
-                        parent.spawn((
-                            SpriteBundle {
-                                texture: assets.load("arrow.png"),
-                                transform: Transform::from_translation(Vec3::new(0.0, -5.0, 0.1)),
-                                sprite: Sprite {
-                                    anchor: bevy::sprite::Anchor::TopCenter,
-                                    ..default()
-                                },
-                                visibility: Visibility::INVISIBLE,
-                                ..default()
-                            },
-                            HoverIndicator,
-                        ));
-                        parent.spawn((
-                            SpriteBundle {
-                                transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
-                                sprite: Sprite {
-                                    custom_size: Some(Vec2::new(2.0, 1.0)),
-                                    color: Color::RED,
+                                    anchor: bevy::sprite::Anchor::BottomCenter,
                                     ..default()
                                 },
                                 ..default()
                             },
-                            Bar {
-                                value: WHEAT_HEALTH,
-                                max: WHEAT_HEALTH,
-                                size: 10.0,
-                            },
-                            HealthBar,
-                        ));
-                    });
+                            Collider::ball(4.0),
+                            Unit::new(
+                                WHEAT_MOVE_SPEED,
+                                WHEAT_AGGRO_RANGE,
+                                WHEAT_CHASE_RANGE,
+                                WHEAT_ATTACK_RANGE,
+                                WHEAT_LEASH_RANGE,
+                                WHEAT_ATTACK_SPEED,
+                                WHEAT_DAMAGE,
+                            ),
+                            Health::new(WHEAT_HEALTH),
+                            common.clone(),
+                        ))
+                        .with_children(|parent| {
+                            parent.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("arrow.png"),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -5.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        anchor: bevy::sprite::Anchor::TopCenter,
+                                        color: Color::YELLOW,
+                                        ..default()
+                                    },
+                                    visibility: Visibility::INVISIBLE,
+                                    ..default()
+                                },
+                                SelectionIndicator,
+                            ));
+                            parent.spawn((
+                                SpriteBundle {
+                                    texture: assets.load("arrow.png"),
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -5.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        anchor: bevy::sprite::Anchor::TopCenter,
+                                        ..default()
+                                    },
+                                    visibility: Visibility::INVISIBLE,
+                                    ..default()
+                                },
+                                HoverIndicator,
+                            ));
+                            parent.spawn((
+                                SpriteBundle {
+                                    transform: Transform::from_translation(Vec3::new(
+                                        0.0, -4.0, 0.1,
+                                    )),
+                                    sprite: Sprite {
+                                        custom_size: Some(Vec2::new(2.0, 1.0)),
+                                        color: Color::RED,
+                                        ..default()
+                                    },
+                                    ..default()
+                                },
+                                Bar {
+                                    value: WHEAT_HEALTH,
+                                    max: WHEAT_HEALTH,
+                                    size: 10.0,
+                                },
+                                HealthBar,
+                            ));
+                        });
+                    }
                 }
             }
         }
