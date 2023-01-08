@@ -18,7 +18,7 @@ pub const CARROT_COMPOST: u32 = 60;
 pub const CLOVER_GROW_TIME: f32 = 3.0;
 pub const CLOVER_DECAY_TIME: f32 = 4.0;
 pub const CLOVER_COST: u32 = 0;
-pub const CLOVER_COMPOST: u32 = 30;
+pub const CLOVER_COMPOST: u32 = 50;
 
 pub const WHEAT_GROW_TIME: f32 = 5.0;
 pub const WHEAT_DECAY_TIME: f32 = 15.0;

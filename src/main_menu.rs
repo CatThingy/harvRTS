@@ -40,18 +40,42 @@ impl Plugin {
                 },
                 ..default()
             });
-            root.spawn(ButtonBundle {
-                image: UiImage(assets.load("play.png")),
-                style: Style {
-                    size: Size {
-                        width: Val::Px(128.0),
-                        height: Val::Px(64.0),
+            root.spawn((
+                ButtonBundle {
+                    image: UiImage(assets.load("play.png")),
+                    style: Style {
+                        size: Size {
+                            width: Val::Px(128.0),
+                            height: Val::Px(64.0),
+                        },
+                        ..default()
                     },
                     ..default()
                 },
-                ..default()
-            })
-            .insert(BeginButton);
+                BeginButton,
+            ));
+            root.spawn(
+                TextBundle {
+                    text: Text {
+                        sections: vec![TextSection {
+                            value: "Click the plots to plant crops.\n".to_owned()
+                                + "When fully grown, crops can be either harvested, turning into units, or composted.\n"
+                                + "If not harvested, fully-grown crops will decay, providing half of their compost value.\n"
+                                + "Click and drag to select units, right click to move them, and press A to command them to attack towards your cursor.",
+                            style: TextStyle {
+                                font: assets.load("fonts/ModeSeven.ttf"),
+                                font_size: 20.0,
+                                color: Color::BLACK,
+                            },
+                        }],
+                        ..default()
+                    },
+                            style: Style {
+                                max_size: Size::new(Val::Px(900.0), Val::Px(500.0)),
+                                ..default()
+                            },
+                    ..default()
+            });
         });
     }
 
