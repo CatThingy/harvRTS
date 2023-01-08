@@ -3,7 +3,11 @@ use std::time::Duration;
 use bevy::prelude::*;
 use iyes_loopless::prelude::*;
 
-use crate::{game::Spawner, health::Dead, GameState, MainCamera};
+use crate::{
+    game::{Compost, Spawner},
+    health::Dead,
+    GameState, MainCamera,
+};
 
 #[derive(Default, Deref, Resource)]
 pub struct MousePosition(pub Vec3);
@@ -48,11 +52,18 @@ impl Plugin {
         }
     }
 
-    fn reset(mut cmd: Commands, q_all: Query<Entity, (With<ComputedVisibility>, Without<Parent>)>) {
+    fn reset(
+        mut cmd: Commands,
+        mut time: ResMut<Time>,
+        q_all: Query<Entity, (With<ComputedVisibility>, Without<Parent>)>,
+    ) {
         cmd.insert_resource(Spawner {
             enemy: Timer::from_seconds(5.0, TimerMode::Repeating),
             total: Duration::default(),
         });
+        cmd.insert_resource(Compost(100));
+
+        time.set_relative_speed(1.0);
 
         for entity in &q_all {
             cmd.entity(entity).despawn_recursive();

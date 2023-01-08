@@ -10,6 +10,8 @@ pub const PLOT_CIRCLE_BUTTON_RADIUS: f32 = 4.0;
 
 pub const CARROT_GROW_TIME: f32 = 0.1;
 pub const CARROT_DECAY_TIME: f32 = 3.0;
+pub const CARROT_COST: u32 = 50;
+pub const CARROT_COMPOST: u32 = 60;
 
 pub const CARROT_MOVE_SPEED: f32 = 100.0;
 pub const CARROT_AGGRO_RANGE: f32 = 25.0;

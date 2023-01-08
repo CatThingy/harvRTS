@@ -16,6 +16,9 @@ pub struct DeathText;
 pub struct GameTimer;
 
 #[derive(Component)]
+pub struct CompostText;
+
+#[derive(Component)]
 pub struct MainMenuButton;
 
 pub struct Plugin;
@@ -50,6 +53,42 @@ impl Plugin {
                 ),
                 GameTimer,
             ));
+            root.spawn(NodeBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    position: UiRect {
+                        top: Val::Px(70.0),
+                        ..default()
+                    },
+                    ..default()
+                },
+                ..default()
+            })
+            .with_children(|parent| {
+                parent.spawn(ImageBundle {
+                    image: UiImage(assets.load("compost.png")),
+
+                    style: Style {
+                        size: Size {
+                            width: Val::Px(16.0),
+                            height: Val::Px(16.0),
+                        },
+                        ..default()
+                    },
+                    ..default()
+                });
+                parent.spawn((
+                    TextBundle::from_section(
+                        "0",
+                        TextStyle {
+                            font: assets.load("fonts/ModeSeven.ttf"),
+                            font_size: 20.0,
+                            color: Color::WHITE,
+                        },
+                    ),
+                    CompostText,
+                ));
+            });
 
             root.spawn((
                 NodeBundle {

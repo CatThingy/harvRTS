@@ -6,9 +6,10 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     consts::{
-        CARROT_DECAY_TIME, CARROT_GROW_TIME, PLOT_CIRCLE_BUTTON_RADIUS, PLOT_CIRCLE_RADIUS,
-        PLOT_COLLISION_GROUP, PLOT_SIZE,
+        CARROT_COMPOST, CARROT_COST, CARROT_DECAY_TIME, CARROT_GROW_TIME,
+        PLOT_CIRCLE_BUTTON_RADIUS, PLOT_CIRCLE_RADIUS, PLOT_COLLISION_GROUP, PLOT_SIZE,
     },
+    game::Compost,
     selection::Selectable,
     utils::MousePosition,
     GameState,
@@ -25,7 +26,7 @@ pub enum Plot {
 #[derive(Component)]
 pub struct PlotOverlay;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Component)]
 pub enum Crop {
     Carrot,
 }
@@ -46,14 +47,21 @@ pub struct PlotCircleButton {
 #[derive(Debug, Clone)]
 enum PlotAction {
     Plant(Crop),
-    Harvest,
+    Harvest(Crop),
     Cancel,
+    Compost(Crop),
 }
 
 pub struct HarvestEvent {
     pub crop: Crop,
     pub pos: Vec3,
 }
+
+#[derive(Component)]
+pub struct CompostDisplay;
+
+#[derive(Component)]
+pub struct CompostDisplayText;
 
 pub struct Plugin;
 
@@ -139,6 +147,37 @@ impl Plugin {
                     PlotCircle { target: entity },
                 ))
                 .with_children(|v| {
+                    v.spawn((SpatialBundle::INVISIBLE_IDENTITY, CompostDisplay))
+                        .with_children(|v| {
+                            v.spawn((
+                                Text2dBundle {
+                                    text: Text::from_section(
+                                        "00",
+                                        TextStyle {
+                                            font: assets.load("fonts/ModeSeven.ttf"),
+                                            font_size: 20.0,
+                                            color: Color::WHITE,
+                                        },
+                                    ),
+                                    transform: Transform {
+                                        scale: Vec3::splat(0.25),
+                                        translation: Vec3::new(0.0, 2.0, 0.0),
+                                        ..default()
+                                    },
+                                    ..default()
+                                },
+                                CompostDisplayText,
+                            ));
+                            v.spawn(SpriteBundle {
+                                texture: assets.load("compost.png"),
+                                sprite: Sprite {
+                                    custom_size: Some(Vec2::splat(4.0)),
+                                    ..default()
+                                },
+                                transform: Transform::from_translation(Vec3::new(-2.0, 0.0, 0.0)),
+                                ..default()
+                            });
+                        });
                     match plot {
                         Plot::Empty => {
                             //  carrot
@@ -173,10 +212,10 @@ impl Plugin {
                                 },
                             ));
                         }
-                        Plot::Ready(_, _) => {
+                        Plot::Ready(crop, _) => {
                             v.spawn((
                                 SpriteBundle {
-                                    texture: assets.load("cancel.png"),
+                                    texture: assets.load("compost.png"),
                                     transform: Transform::from_translation(Vec3 {
                                         x: f32::cos(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
                                         y: f32::sin(3.0 * TAU / 4.0) * PLOT_CIRCLE_RADIUS * 0.75,
@@ -185,7 +224,7 @@ impl Plugin {
                                     ..default()
                                 },
                                 PlotCircleButton {
-                                    action: PlotAction::Cancel,
+                                    action: PlotAction::Compost(crop.clone()),
                                 },
                             ));
                             v.spawn((
@@ -199,7 +238,7 @@ impl Plugin {
                                     ..default()
                                 },
                                 PlotCircleButton {
-                                    action: PlotAction::Harvest,
+                                    action: PlotAction::Harvest(crop.clone()),
                                 },
                             ));
                         }
@@ -260,10 +299,56 @@ impl Plugin {
         }
     }
 
+    fn plot_button_hover(
+        q_plot_circle_button: Query<(&GlobalTransform, &PlotCircleButton)>,
+        mouse_pos: Res<MousePosition>,
+        mut q_compost_display: Query<&mut Visibility, With<CompostDisplay>>,
+        mut q_compost_display_text: Query<&mut Text, With<CompostDisplayText>>,
+    ) {
+        for (transform, button) in &q_plot_circle_button {
+            let dist = transform
+                .translation()
+                .truncate()
+                .distance(mouse_pos.truncate());
+
+            if dist <= PLOT_CIRCLE_BUTTON_RADIUS {
+                match &button.action {
+                    PlotAction::Plant(crop) => {
+                        q_compost_display.single_mut().is_visible = true;
+                        let mut text = q_compost_display_text.single_mut();
+                        let number = match crop {
+                            Crop::Carrot => CARROT_COST,
+                        };
+
+                        text.sections[0].value = format!("{number}");
+                        text.sections[0].style.color = Color::RED;
+                    }
+                    PlotAction::Compost(crop) => {
+                        q_compost_display.single_mut().is_visible = true;
+                        let mut text = q_compost_display_text.single_mut();
+                        let number = match crop {
+                            Crop::Carrot => CARROT_COMPOST,
+                        };
+
+                        text.sections[0].value = format!("{number}");
+                        text.sections[0].style.color = Color::GREEN;
+                    }
+                    _ => {}
+                }
+                return;
+            }
+        }
+
+        if let Ok(mut display) = q_compost_display.get_single_mut() {
+            display.is_visible = false;
+        }
+    }
+
     fn handle_plot_event(
         mut cmd: Commands,
         mut plot_events: ResMut<Events<PlotAction>>,
         mut harvest_events: EventWriter<HarvestEvent>,
+        mut compost: ResMut<Compost>,
         mut plot_circle: ResMut<ActivePlotCircle>,
         q_plot_circle: Query<&PlotCircle>,
         mut q_plots: Query<(&mut Plot, &GlobalTransform)>,
@@ -278,27 +363,43 @@ impl Plugin {
 
             match &*plot {
                 Plot::Empty => match event {
-                    PlotAction::Plant(crop) => *plot = Plot::Growing(crop, 0.0),
-                    PlotAction::Harvest | PlotAction::Cancel => {
+                    PlotAction::Plant(crop) => {
+                        let cost = match crop {
+                            Crop::Carrot => CARROT_COST,
+                        };
+
+                        if compost.0 >= cost {
+                            *plot = Plot::Growing(crop, 0.0);
+                            compost.0 -= cost;
+                        }
+                    }
+                    PlotAction::Harvest(_) | PlotAction::Cancel | PlotAction::Compost(_) => {
                         error!("can't harvest or cancel an empty plot")
                     }
                 },
                 Plot::Growing(_, _) => match event {
-                    PlotAction::Plant(_) | PlotAction::Harvest => {
+                    PlotAction::Plant(_) | PlotAction::Harvest(_) | PlotAction::Compost(_) => {
                         error!("can't plant in or harvest a growing plot")
                     }
                     PlotAction::Cancel => *plot = Plot::Empty,
                 },
                 Plot::Ready(crop, _) => match event {
-                    PlotAction::Plant(_) => error!("can't plant in a grown plot"),
-                    PlotAction::Harvest => {
+                    PlotAction::Plant(_) | PlotAction::Cancel => {
+                        error!("can't plant in a grown plot")
+                    }
+                    PlotAction::Harvest(_) => {
                         harvest_events.send(HarvestEvent {
                             crop: crop.clone(),
                             pos: transform.translation(),
                         });
                         *plot = Plot::Empty;
                     }
-                    PlotAction::Cancel => *plot = Plot::Empty,
+                    PlotAction::Compost(_) => {
+                        compost.0 += match crop {
+                            Crop::Carrot => CARROT_COMPOST,
+                        };
+                        *plot = Plot::Empty;
+                    }
                 },
             }
         }
@@ -325,6 +426,7 @@ impl Plugin {
     fn update_plot(
         time: Res<Time>,
         active_plot_circle: Res<ActivePlotCircle>,
+        mut compost: ResMut<Compost>,
         mut plots: Query<&mut Plot>,
     ) {
         let delta = time.delta_seconds();
@@ -344,6 +446,9 @@ impl Plugin {
                         Crop::Carrot => *t += delta / CARROT_DECAY_TIME,
                     }
                     if *t >= 1.0 && active_plot_circle.0.is_none() {
+                        compost.0 += match crop {
+                            Crop::Carrot => CARROT_COMPOST,
+                        } / 2;
                         *plot = Plot::Empty;
                     }
                 }
@@ -358,9 +463,26 @@ impl bevy::app::Plugin for Plugin {
             .init_resource::<Events<PlotAction>>()
             .init_resource::<Events<HarvestEvent>>()
             .add_enter_system(GameState::InGame, Self::init)
-            .add_system(Self::remove_plot_circle.run_in_state(GameState::InGame).before("plot_click"))
-            .add_system(Self::plot_click.run_in_state(GameState::InGame).label("plot_click"))
-            .add_system(Self::plot_button_click.run_in_state(GameState::InGame).after("plot_click"))
+            .add_system(
+                Self::remove_plot_circle
+                    .run_in_state(GameState::InGame)
+                    .before("plot_click"),
+            )
+            .add_system(
+                Self::plot_click
+                    .run_in_state(GameState::InGame)
+                    .label("plot_click"),
+            )
+            .add_system(
+                Self::plot_button_click
+                    .run_in_state(GameState::InGame)
+                    .after("plot_click"),
+            )
+            .add_system(
+                Self::plot_button_hover
+                    .run_in_state(GameState::InGame)
+                    .after("plot_click"),
+            )
             .add_system(Self::handle_plot_event.run_in_state(GameState::InGame))
             .add_system(Self::update_plot_overlay.run_in_state(GameState::InGame))
             .add_system(Self::update_plot.run_in_state(GameState::InGame));

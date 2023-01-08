@@ -106,8 +106,8 @@ impl Plugin {
                         unit.state = UnitState::Move(*dest);
                     }
                     UnitCommand::AttackMove(dest) => {
-                        if unit_pos.distance(*dest) <= TARGET_MOVEMENT_SLOP {
-                            let dest = *dest;
+                        let dest = *dest;
+                        if unit_pos.distance(dest) <= TARGET_MOVEMENT_SLOP {
                             unit.last_target_pos = dest;
                             unit.leash_pos = dest;
                             unit.command = None;
@@ -117,9 +117,9 @@ impl Plugin {
 
                         match unit.state {
                             UnitState::Idle => {
-                                unit.state = UnitState::Move(*dest);
+                                unit.state = UnitState::Move(dest);
                             }
-                            UnitState::Move(dest) => {
+                            UnitState::Move(_) => {
                                 if unit_pos.distance(dest) <= TARGET_MOVEMENT_SLOP {
                                     unit.last_target_pos = dest;
                                     unit.leash_pos = dest;
@@ -163,6 +163,8 @@ impl Plugin {
                                     unit.last_target_pos = dest;
                                     unit.leash_pos = unit_pos;
                                     unit.state = UnitState::Chase(e);
+                                } else {
+                                    unit.state = UnitState::Move(dest);
                                 }
                             }
                             UnitState::Chase(entity) => match q_transform.get(entity) {
@@ -294,10 +296,10 @@ impl Plugin {
                             unit.state = UnitState::Move(unit.leash_pos);
                         }
                     },
-                    UnitState::Attack(_) => {
+                    UnitState::Attack(e) => {
                         if unit.attack_timer.finished() {
                             unit.attack_timer.reset();
-                            unit.state = UnitState::Idle;
+                            unit.state = UnitState::Chase(e);
                         }
                     }
                 }
@@ -386,6 +388,7 @@ impl Plugin {
                         Health::new(CARROT_HEALTH),
                         Selectable::default(),
                         Friendly,
+                        Crop::Carrot,
                     ))
                     .with_children(|parent| {
                         parent.spawn((
@@ -525,6 +528,21 @@ impl Plugin {
         }
     }
 
+    fn crop_decay(
+        time: Res<Time>,
+        q_crop: Query<(Entity, &Crop)>,
+        mut health_change: EventWriter<HealthChange>,
+    ) {
+        let delta = time.delta_seconds();
+        for (target, crop) in &q_crop {
+            let amount = -delta
+                * match crop {
+                    Crop::Carrot => CARROT_HEALTH / (CARROT_DECAY_TIME + CARROT_GROW_TIME),
+                };
+            health_change.send(HealthChange { target, amount });
+        }
+    }
+
     fn flip_unit(mut q_sprite: Query<(&mut Sprite, &Velocity), With<Unit>>) {
         for (mut sprite, vel) in &mut q_sprite {
             if vel.linvel.x > 0.0 {
@@ -548,6 +566,7 @@ impl bevy::app::Plugin for Plugin {
             .add_system(Self::process_command.run_in_state(GameState::InGame))
             .add_system(Self::enemy_spawn.run_in_state(GameState::InGame))
             .add_system(Self::flip_unit.run_in_state(GameState::InGame))
+            .add_system(Self::crop_decay.run_in_state(GameState::InGame))
             .add_system(Self::update_unit_state::<Friendly>.run_in_state(GameState::InGame))
             .add_system(Self::update_unit_state::<Enemy>.run_in_state(GameState::InGame));
     }

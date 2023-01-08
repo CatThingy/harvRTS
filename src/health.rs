@@ -58,7 +58,7 @@ impl Plugin {
                     cmd.entity(entity).remove::<Health>().insert(Dead);
                 }
 
-                if event.amount < 0.0 {
+                if event.amount < -0.5 {
                     cmd.entity(entity).insert(DamageFlash::new());
                 }
             }

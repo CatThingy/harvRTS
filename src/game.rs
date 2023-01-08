@@ -5,6 +5,7 @@ use bevy_rapier2d::prelude::*;
 use iyes_loopless::prelude::*;
 
 use crate::consts::*;
+use crate::game_menu::CompostText;
 use crate::game_menu::GameMenu;
 use crate::game_menu::GameTimer;
 use crate::health::Health;
@@ -23,6 +24,9 @@ pub struct Spawner {
     pub enemy: Timer,
     pub total: Duration,
 }
+
+#[derive(Resource)]
+pub struct Compost(pub u32);
 
 pub struct Plugin;
 
@@ -136,10 +140,15 @@ impl Plugin {
         }
     }
 
-    fn end_game(q_rose: Query<&Rose>, mut q_panel: Query<&mut Style, With<GameMenu>>) {
+    fn end_game(
+        mut time: ResMut<Time>,
+        q_rose: Query<&Rose>,
+        mut q_panel: Query<&mut Style, With<GameMenu>>,
+    ) {
         if q_rose.is_empty() {
             let mut panel = q_panel.single_mut();
             panel.display = Display::Flex;
+            time.set_relative_speed(0.0);
         }
     }
 
@@ -150,6 +159,11 @@ impl Plugin {
 
         timer.sections[0].value = format!("{:<02}:{:<02}", seconds / 60, seconds % 60);
     }
+
+    fn update_compost(compost: Res<Compost>, mut q_text: Query<&mut Text, With<CompostText>>) {
+        let mut text = q_text.single_mut();
+        text.sections[0].value = format!("{}", compost.0);
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
@@ -158,9 +172,11 @@ impl bevy::app::Plugin for Plugin {
             enemy: Timer::from_seconds(7.0, TimerMode::Repeating),
             total: Duration::default(),
         })
+        .insert_resource(Compost(100))
         .add_enter_system(GameState::InGame, Self::init)
         .add_system(Self::end_game.run_in_state(GameState::InGame))
         .add_system(Self::update_timer.run_in_state(GameState::InGame))
+        .add_system(Self::update_compost.run_in_state(GameState::InGame))
         .add_system(Self::enemy_spawning.run_in_state(GameState::InGame));
     }
 }
