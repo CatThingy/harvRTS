@@ -21,9 +21,9 @@ pub const CLOVER_COST: u32 = 0;
 pub const CLOVER_COMPOST: u32 = 30;
 
 pub const WHEAT_GROW_TIME: f32 = 5.0;
-pub const WHEAT_DECAY_TIME: f32 = 15.0;
+pub const WHEAT_DECAY_TIME: f32 = 10.0;
 pub const WHEAT_COST: u32 = 20;
-pub const WHEAT_COMPOST: u32 = 80;
+pub const WHEAT_COMPOST: u32 = 60;
 
 // -------------------------------------------------------------------------------------------
 
@@ -33,9 +33,9 @@ pub const CARROT_AGGRO_RANGE: f32 = 25.0;
 pub const CARROT_CHASE_RANGE: f32 = 50.0;
 pub const CARROT_LEASH_RANGE: f32 = 100.0;
 pub const CARROT_ATTACK_RANGE: f32 = 10.0;
-pub const CARROT_ATTACK_SPEED: f32 = 2.0;
+pub const CARROT_ATTACK_SPEED: f32 = 1.0;
 pub const CARROT_HEALTH: f32 = 20.0;
-pub const CARROT_DAMAGE: f32 = 2.0;
+pub const CARROT_DAMAGE: f32 = 4.0;
 
 pub const CLOVER_COUNT: u32 = 7;
 pub const CLOVER_MOVE_SPEED: f32 = 100.0;
@@ -52,7 +52,7 @@ pub const WHEAT_MOVE_SPEED: f32 = 75.0;
 pub const WHEAT_AGGRO_RANGE: f32 = 40.0;
 pub const WHEAT_CHASE_RANGE: f32 = 50.0;
 pub const WHEAT_LEASH_RANGE: f32 = 100.0;
-pub const WHEAT_ATTACK_RANGE: f32 = 20.0;
+pub const WHEAT_ATTACK_RANGE: f32 = 10.0;
 pub const WHEAT_ATTACK_SPEED: f32 = 1.0;
 pub const WHEAT_HEALTH: f32 = 10.0;
 pub const WHEAT_DAMAGE: f32 = 1.0;

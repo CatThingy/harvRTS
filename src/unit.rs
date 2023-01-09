@@ -184,8 +184,23 @@ impl Plugin {
                                         || leash_distance > unit.leash_range
                                     {
                                         unit.state = UnitState::Move(unit.last_target_pos);
-                                    } else if distance < unit.attack_range {
-                                        unit.state = UnitState::Attack(entity);
+                                    } else {
+                                        rapier_ctx.intersections_with_shape(
+                                            unit_pos,
+                                            0.0,
+                                            &Collider::ball(unit.attack_range),
+                                            QueryFilter::new().groups(InteractionGroups {
+                                                memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                                filter: T::ATTACKS_GROUP.bits().into(),
+                                            }),
+                                            |e| {
+                                                if entity == e {
+                                                    unit.state = UnitState::Attack(entity);
+                                                    return false;
+                                                }
+                                                return true;
+                                            },
+                                        );
                                     }
                                 }
                                 Err(_) => {
@@ -292,8 +307,23 @@ impl Plugin {
 
                             if distance > unit.aggro_range || leash_distance > unit.leash_range {
                                 unit.state = UnitState::Move(unit.leash_pos);
-                            } else if distance < unit.attack_range {
-                                unit.state = UnitState::Attack(entity);
+                            } else {
+                                rapier_ctx.intersections_with_shape(
+                                    unit_pos,
+                                    0.0,
+                                    &Collider::ball(unit.attack_range),
+                                    QueryFilter::new().groups(InteractionGroups {
+                                        memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                        filter: T::ATTACKS_GROUP.bits().into(),
+                                    }),
+                                    |e| {
+                                        if entity == e {
+                                            unit.state = UnitState::Attack(entity);
+                                            return false;
+                                        }
+                                        return true;
+                                    },
+                                );
                             }
                         }
                         Err(_) => {

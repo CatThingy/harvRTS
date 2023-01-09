@@ -369,7 +369,9 @@ impl Plugin {
         q_plot_circle: Query<(Entity, &GlobalTransform), With<PlotCircle>>,
     ) {
         if mouse_button.just_pressed(MouseButton::Left) {
-            if let Some((entity, transform)) = plot_circle.map(|v| q_plot_circle.get(v).unwrap()) {
+            if let Some((entity, transform)) =
+                plot_circle.map(|v| q_plot_circle.get(v).ok()).flatten()
+            {
                 let dist = transform
                     .translation()
                     .truncate()
@@ -480,9 +482,9 @@ impl Plugin {
             let Some(plot_circle) = plot_circle.0.take() else { return };
             cmd.entity(plot_circle).despawn_recursive();
 
-            let target = q_plot_circle.get(plot_circle).unwrap().target;
+            let Ok(target) = q_plot_circle.get(plot_circle).map(|v| v.target) else { return };
 
-            let (mut plot, transform) = q_plots.get_mut(target).unwrap();
+            let Ok((mut plot, transform)) = q_plots.get_mut(target) else { return };
 
             match &*plot {
                 Plot::Locked => match event {
@@ -594,11 +596,12 @@ impl Plugin {
                     }
                     if *t >= 1.0 {
                         if let Some(circle) = active_plot_circle.0 {
-                            let plot_circle = q_plot_circle.get(circle).unwrap();
-                            if plot_circle.target == entity {
-                                active_plot_circle.0 = None;
-                                cmd.entity(circle).despawn_recursive();
-                                ev_plot.send(ActivatePlotCircle(entity));
+                            if let Ok(plot_circle) = q_plot_circle.get(circle) {
+                                if plot_circle.target == entity {
+                                    active_plot_circle.0 = None;
+                                    cmd.entity(circle).despawn_recursive();
+                                    ev_plot.send(ActivatePlotCircle(entity));
+                                }
                             }
                         }
                         *plot = Plot::Ready(crop.clone(), 0.0)
@@ -612,11 +615,12 @@ impl Plugin {
                     }
                     if *t >= 1.0 {
                         if let Some(circle) = active_plot_circle.0 {
-                            let plot_circle = q_plot_circle.get(circle).unwrap();
-                            if plot_circle.target == entity {
-                                active_plot_circle.0 = None;
-                                cmd.entity(circle).despawn_recursive();
-                                ev_plot.send(ActivatePlotCircle(entity));
+                            if let Ok(plot_circle) = q_plot_circle.get(circle) {
+                                if plot_circle.target == entity {
+                                    active_plot_circle.0 = None;
+                                    cmd.entity(circle).despawn_recursive();
+                                    ev_plot.send(ActivatePlotCircle(entity));
+                                }
                             }
                         }
                         compost.0 += match crop {
@@ -652,7 +656,8 @@ impl bevy::app::Plugin for Plugin {
             .add_system(
                 Self::spawn_plot_circle
                     .run_in_state(GameState::InGame)
-                    .label("circle_spawn"),
+                    .label("circle_spawn")
+                    .after("plot_click"),
             )
             .add_system(
                 Self::plot_button_click
