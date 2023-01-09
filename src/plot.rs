@@ -49,6 +49,8 @@ pub struct PlotCircleButton {
     action: PlotAction,
 }
 
+struct ActivatePlotCircle(Entity);
+
 #[derive(Debug, Clone)]
 enum PlotAction {
     Plant(Crop),
@@ -160,12 +162,11 @@ impl Plugin {
     }
 
     fn plot_click(
-        mut cmd: Commands,
-        assets: Res<AssetServer>,
         mouse_pos: Res<MousePosition>,
         mouse_button: Res<Input<MouseButton>>,
         rapier_ctx: Res<RapierContext>,
-        mut plot_circle: ResMut<ActivePlotCircle>,
+        plot_circle: Res<ActivePlotCircle>,
+        mut ev_plot: EventWriter<ActivatePlotCircle>,
         q_plot: Query<(Entity, &Plot, &GlobalTransform)>,
         q_selectable: Query<&Selectable>,
     ) {
@@ -183,10 +184,23 @@ impl Plugin {
                 }
                 false
             });
-            let Some((entity, plot, mut pos)) = plot else { return; };
+            if let Some(plot) = plot {
+                ev_plot.send(ActivatePlotCircle(plot.0))
+            }
+        }
+    }
 
+    fn spawn_plot_circle(
+        mut cmd: Commands,
+        assets: Res<AssetServer>,
+        mut plot_circle: ResMut<ActivePlotCircle>,
+        mut ev_plot: EventReader<ActivatePlotCircle>,
+        q_plot: Query<(&Plot, &GlobalTransform)>,
+    ) {
+        if let Some(ActivatePlotCircle(e)) = ev_plot.iter().last() {
+            let Ok((plot, pos)) = q_plot.get(*e) else { return; };
+            let mut pos = pos.translation();
             pos.z = 50.0;
-
             let new_plot_circle = cmd
                 .spawn((
                     SpriteBundle {
@@ -194,7 +208,7 @@ impl Plugin {
                         transform: Transform::from_translation(pos),
                         ..default()
                     },
-                    PlotCircle { target: entity },
+                    PlotCircle { target: *e },
                 ))
                 .with_children(|v| {
                     v.spawn((SpatialBundle::INVISIBLE_IDENTITY, CompostDisplay))
@@ -463,7 +477,7 @@ impl Plugin {
         mut q_plots: Query<(&mut Plot, &GlobalTransform)>,
     ) {
         for event in plot_events.drain() {
-            let plot_circle = plot_circle.0.take().unwrap();
+            let Some(plot_circle) = plot_circle.0.take() else { return };
             cmd.entity(plot_circle).despawn_recursive();
 
             let target = q_plot_circle.get(plot_circle).unwrap().target;
@@ -560,13 +574,16 @@ impl Plugin {
     }
 
     fn update_plot(
+        mut cmd: Commands,
         time: Res<Time>,
-        active_plot_circle: Res<ActivePlotCircle>,
+        mut active_plot_circle: ResMut<ActivePlotCircle>,
+        mut ev_plot: EventWriter<ActivatePlotCircle>,
         mut compost: ResMut<Compost>,
-        mut plots: Query<&mut Plot>,
+        q_plot_circle: Query<&PlotCircle>,
+        mut q_plots: Query<(Entity, &mut Plot)>,
     ) {
         let delta = time.delta_seconds();
-        for mut plot in &mut plots {
+        for (entity, mut plot) in &mut q_plots {
             match &mut *plot {
                 Plot::Empty | Plot::Locked => {}
                 Plot::Growing(crop, ref mut t) => {
@@ -575,7 +592,15 @@ impl Plugin {
                         Crop::Clover => *t += delta / CLOVER_GROW_TIME,
                         Crop::Wheat => *t += delta / WHEAT_GROW_TIME,
                     }
-                    if *t >= 1.0 && active_plot_circle.0.is_none() {
+                    if *t >= 1.0 {
+                        if let Some(circle) = active_plot_circle.0 {
+                            active_plot_circle.0 = None;
+                            let plot_circle = q_plot_circle.get(circle).unwrap();
+                            if plot_circle.target == entity {
+                                cmd.entity(circle).despawn_recursive();
+                                ev_plot.send(ActivatePlotCircle(entity));
+                            }
+                        }
                         *plot = Plot::Ready(crop.clone(), 0.0)
                     }
                 }
@@ -585,7 +610,15 @@ impl Plugin {
                         Crop::Clover => *t += delta / CLOVER_DECAY_TIME,
                         Crop::Wheat => *t += delta / WHEAT_DECAY_TIME,
                     }
-                    if *t >= 1.0 && active_plot_circle.0.is_none() {
+                    if *t >= 1.0 {
+                        if let Some(circle) = active_plot_circle.0 {
+                            active_plot_circle.0 = None;
+                            let plot_circle = q_plot_circle.get(circle).unwrap();
+                            if plot_circle.target == entity {
+                                cmd.entity(circle).despawn_recursive();
+                                ev_plot.send(ActivatePlotCircle(entity));
+                            }
+                        }
                         compost.0 += match crop {
                             Crop::Carrot => CARROT_COMPOST,
                             Crop::Clover => CLOVER_COMPOST,
@@ -604,6 +637,7 @@ impl bevy::app::Plugin for Plugin {
         app.init_resource::<ActivePlotCircle>()
             .init_resource::<Events<PlotAction>>()
             .init_resource::<Events<HarvestEvent>>()
+            .add_event::<ActivatePlotCircle>()
             .add_enter_system(GameState::InGame, Self::init)
             .add_system(
                 Self::remove_plot_circle
@@ -616,14 +650,19 @@ impl bevy::app::Plugin for Plugin {
                     .label("plot_click"),
             )
             .add_system(
+                Self::spawn_plot_circle
+                    .run_in_state(GameState::InGame)
+                    .label("circle_spawn"),
+            )
+            .add_system(
                 Self::plot_button_click
                     .run_in_state(GameState::InGame)
-                    .after("plot_click"),
+                    .after("circle_spawn"),
             )
             .add_system(
                 Self::plot_button_hover
                     .run_in_state(GameState::InGame)
-                    .after("plot_click"),
+                    .after("circle_spawn"),
             )
             .add_system(Self::handle_plot_event.run_in_state(GameState::InGame))
             .add_system(Self::update_plot_overlay.run_in_state(GameState::InGame))
