@@ -23,6 +23,9 @@ pub struct Reset;
 
 pub struct PlaySound(pub String);
 
+#[derive(Resource)]
+pub struct Preload(Vec<HandleUntyped>);
+
 pub struct Plugin;
 impl Plugin {
     fn update_mouse_position(
@@ -78,11 +81,50 @@ impl Plugin {
             audio.play(assets.load(sound));
         }
     }
+
+    fn preload(mut cmd: Commands, assets: Res<AssetServer>) {
+        let mut preloaded = vec![];
+        preloaded.push(assets.load_untyped("aphid.png"));
+        preloaded.push(assets.load_untyped("arrow.png"));
+        preloaded.push(assets.load_untyped("cancel.png"));
+        preloaded.push(assets.load_untyped("carrot_growing.png"));
+        preloaded.push(assets.load_untyped("carrot_grown.png"));
+        preloaded.push(assets.load_untyped("carrot_unit.png"));
+        preloaded.push(assets.load_untyped("caterpillar.png"));
+        preloaded.push(assets.load_untyped("clear.ogg"));
+        preloaded.push(assets.load_untyped("clover_growing.png"));
+        preloaded.push(assets.load_untyped("clover_grown.png"));
+        preloaded.push(assets.load_untyped("clover_unit.png"));
+        preloaded.push(assets.load_untyped("compost.ogg"));
+        preloaded.push(assets.load_untyped("compost.png"));
+        preloaded.push(assets.load_untyped("death_text.png"));
+        preloaded.push(assets.load_untyped("empty.png"));
+        preloaded.push(assets.load_untyped("harvest.png"));
+        preloaded.push(assets.load_untyped("menu_button.png"));
+        preloaded.push(assets.load_untyped("plant.ogg"));
+        preloaded.push(assets.load_untyped("plant_carrot.png"));
+        preloaded.push(assets.load_untyped("plant_clover.png"));
+        preloaded.push(assets.load_untyped("plant_wheat.png"));
+        preloaded.push(assets.load_untyped("play.png"));
+        preloaded.push(assets.load_untyped("plot.png"));
+        preloaded.push(assets.load_untyped("plot_circle.png"));
+        preloaded.push(assets.load_untyped("rocks.png"));
+        preloaded.push(assets.load_untyped("rose.png"));
+        preloaded.push(assets.load_untyped("snip.ogg"));
+        preloaded.push(assets.load_untyped("title.png"));
+        preloaded.push(assets.load_untyped("wheat_growing.png"));
+        preloaded.push(assets.load_untyped("wheat_grown.png"));
+        preloaded.push(assets.load_untyped("wheat_unit.png"));
+        preloaded.push(assets.load_untyped("fonts/ModeSeven.ttf"));
+
+        cmd.insert_resource(Preload(preloaded));
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<MousePosition>()
+        app.add_startup_system(Self::preload)
+            .init_resource::<MousePosition>()
             .init_resource::<Events<Reset>>()
             .add_event::<PlaySound>()
             .add_exit_system(GameState::InGame, Self::reset)

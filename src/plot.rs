@@ -13,7 +13,7 @@ use crate::{
     },
     game::Compost,
     selection::Selectable,
-    utils::MousePosition,
+    utils::{MousePosition, PlaySound},
     GameState,
 };
 
@@ -456,6 +456,7 @@ impl Plugin {
         mut cmd: Commands,
         mut plot_events: ResMut<Events<PlotAction>>,
         mut harvest_events: EventWriter<HarvestEvent>,
+        mut sound_events: EventWriter<PlaySound>,
         mut compost: ResMut<Compost>,
         mut plot_circle: ResMut<ActivePlotCircle>,
         q_plot_circle: Query<&PlotCircle>,
@@ -475,6 +476,7 @@ impl Plugin {
                         if compost.0 >= PLOT_UNLOCK_COST {
                             *plot = Plot::Empty;
                             compost.0 -= PLOT_UNLOCK_COST;
+                            sound_events.send(PlaySound("clear.ogg".to_owned()));
                         }
                     }
                     _ => {
@@ -492,6 +494,7 @@ impl Plugin {
                         if compost.0 >= cost {
                             *plot = Plot::Growing(crop, 0.0);
                             compost.0 -= cost;
+                            sound_events.send(PlaySound("plant.ogg".to_owned()));
                         }
                     }
                     _ => {
@@ -518,6 +521,7 @@ impl Plugin {
                             Crop::Clover => CLOVER_COMPOST,
                             Crop::Wheat => WHEAT_COMPOST,
                         };
+                        sound_events.send(PlaySound("compost.ogg".to_owned()));
                         *plot = Plot::Empty;
                     }
                     _ => {

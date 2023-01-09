@@ -70,13 +70,13 @@ impl Plugin {
 
         spawner.total += time.delta();
 
-        let aphid_tick_multiplier = spawner.total.as_secs_f32() / (60.0);
+        let aphid_tick_multiplier = spawner.total.as_secs_f32() / (2.0 * 60.0);
 
         spawner
             .aphid
             .tick(time.delta().mul_f32(1.0 + aphid_tick_multiplier));
 
-        let caterpillar_tick_multiplier = spawner.total.as_secs_f32() / (2.0 * 60.0);
+        let caterpillar_tick_multiplier = spawner.total.as_secs_f32() / (4.0 * 60.0);
 
         spawner
             .caterpillar
@@ -85,7 +85,7 @@ impl Plugin {
         let rng = fastrand::Rng::default();
 
         if spawner.aphid.just_finished() {
-            let viewport_size = camera.logical_viewport_size().unwrap() + Vec2::splat(20.0);
+            let viewport_size = camera.logical_viewport_size().unwrap() / 4.0 + Vec2::splat(20.0);
 
             let mut rand = rng.f32() * (2.0 * viewport_size.x + 2.0 * viewport_size.y);
 
@@ -157,7 +157,7 @@ impl Plugin {
         }
 
         if spawner.caterpillar.just_finished() {
-            let viewport_size = camera.logical_viewport_size().unwrap() + Vec2::splat(20.0);
+            let viewport_size = camera.logical_viewport_size().unwrap() / 4.0 + Vec2::splat(20.0);
 
             let mut rand = rng.f32() * (2.0 * viewport_size.x + 2.0 * viewport_size.y);
 
