@@ -136,11 +136,19 @@ impl Plugin {
             time.pause();
         }
     }
+
+    fn music(audio: Res<Audio>, assets: Res<AssetServer>) {
+        audio.play_with_settings(
+            assets.load("harvest-2-harvest-harder.ogg"),
+            PlaybackSettings::LOOP,
+        );
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(Self::preload)
+            .add_startup_system(Self::music)
             .init_resource::<MousePosition>()
             .init_resource::<Events<Reset>>()
             .add_event::<PlaySound>()

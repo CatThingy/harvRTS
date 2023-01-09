@@ -594,9 +594,9 @@ impl Plugin {
                     }
                     if *t >= 1.0 {
                         if let Some(circle) = active_plot_circle.0 {
-                            active_plot_circle.0 = None;
                             let plot_circle = q_plot_circle.get(circle).unwrap();
                             if plot_circle.target == entity {
+                                active_plot_circle.0 = None;
                                 cmd.entity(circle).despawn_recursive();
                                 ev_plot.send(ActivatePlotCircle(entity));
                             }
@@ -612,9 +612,9 @@ impl Plugin {
                     }
                     if *t >= 1.0 {
                         if let Some(circle) = active_plot_circle.0 {
-                            active_plot_circle.0 = None;
                             let plot_circle = q_plot_circle.get(circle).unwrap();
                             if plot_circle.target == entity {
+                                active_plot_circle.0 = None;
                                 cmd.entity(circle).despawn_recursive();
                                 ev_plot.send(ActivatePlotCircle(entity));
                             }
