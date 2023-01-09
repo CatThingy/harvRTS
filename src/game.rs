@@ -56,7 +56,26 @@ impl Plugin {
                 memberships: UNIT_COLLISION_GROUP | FRIENDLY_COLLISION_GROUP,
                 filters: UNIT_COLLISION_GROUP,
             },
-        ));
+        ))
+        .with_children(|v| {
+            v.spawn((
+                SpriteBundle {
+                    transform: Transform::from_translation(Vec3::new(0.0, -2.0, 0.1)),
+                    sprite: Sprite {
+                        custom_size: Some(Vec2::new(2.0, 1.0)),
+                        color: Color::RED,
+                        ..default()
+                    },
+                    ..default()
+                },
+                Bar {
+                    value: 100.0,
+                    max: 100.0,
+                    size: 30.0,
+                },
+                HealthBar,
+            ));
+        });
     }
 
     fn enemy_spawning(

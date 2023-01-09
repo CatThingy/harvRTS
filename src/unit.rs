@@ -172,17 +172,31 @@ impl Plugin {
                                 }
                             }
                             UnitState::Chase(entity) => match q_transform.get(entity) {
-                                Ok((p, _)) => {
-                                    let target_pos = p.translation().truncate();
+                                Ok((_, _)) => {
                                     let pos = unit_pos;
 
-                                    let distance = pos.distance(target_pos);
+                                    let mut in_chase_range = false;
+
+                                    rapier_ctx.intersections_with_shape(
+                                        unit_pos,
+                                        0.0,
+                                        &Collider::ball(unit.chase_range),
+                                        QueryFilter::new().groups(InteractionGroups {
+                                            memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                            filter: T::ATTACKS_GROUP.bits().into(),
+                                        }),
+                                        |e| {
+                                            if entity == e {
+                                                in_chase_range = true;
+                                                return false;
+                                            }
+                                            return true;
+                                        },
+                                    );
 
                                     let leash_distance = unit.leash_pos.distance(pos);
 
-                                    if distance > unit.chase_range
-                                        || leash_distance > unit.leash_range
-                                    {
+                                    if !in_chase_range || leash_distance > unit.leash_range {
                                         unit.state = UnitState::Move(unit.last_target_pos);
                                     } else {
                                         rapier_ctx.intersections_with_shape(
@@ -297,15 +311,31 @@ impl Plugin {
                         }
                     }
                     UnitState::Chase(entity) => match q_transform.get(entity) {
-                        Ok((p, _)) => {
-                            let target_pos = p.translation().truncate();
+                        Ok((_, _)) => {
                             let pos = unit_pos;
 
-                            let distance = pos.distance(target_pos);
+                            let mut in_chase_range = false;
+
+                            rapier_ctx.intersections_with_shape(
+                                unit_pos,
+                                0.0,
+                                &Collider::ball(unit.chase_range),
+                                QueryFilter::new().groups(InteractionGroups {
+                                    memberships: UNIT_COLLISION_GROUP.bits().into(),
+                                    filter: T::ATTACKS_GROUP.bits().into(),
+                                }),
+                                |e| {
+                                    if entity == e {
+                                        in_chase_range = true;
+                                        return false;
+                                    }
+                                    return true;
+                                },
+                            );
 
                             let leash_distance = unit.leash_pos.distance(pos);
 
-                            if distance > unit.aggro_range || leash_distance > unit.leash_range {
+                            if !in_chase_range || leash_distance > unit.leash_range {
                                 unit.state = UnitState::Move(unit.leash_pos);
                             } else {
                                 rapier_ctx.intersections_with_shape(
