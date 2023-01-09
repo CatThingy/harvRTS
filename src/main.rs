@@ -26,22 +26,35 @@ pub struct MainCamera;
 fn main() {
     let mut app = App::new();
 
-    app.add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
-        .insert_resource(RapierConfiguration {
-            gravity: Vec2::ZERO,
-            ..default()
-        })
-        .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-        .add_loopless_state(GameState::MainMenu)
-        .add_plugin(utils::Plugin)
-        .add_plugin(main_menu::Plugin)
-        .add_plugin(plot::Plugin)
-        .add_plugin(unit::Plugin)
-        .add_plugin(game_menu::Plugin)
-        .add_plugin(health::Plugin)
-        .add_plugin(game::Plugin)
-        .add_plugin(selection::Plugin)
-        .add_startup_system(init);
+    app.add_plugins(
+        DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(WindowPlugin {
+                window: WindowDescriptor {
+                    width: 1280.0,
+                    height: 720.0,
+                    title: "harvRTS".to_string(),
+                    canvas: Some("#bevy".to_owned()),
+                    ..Default::default()
+                },
+                ..default()
+            }),
+    )
+    .insert_resource(RapierConfiguration {
+        gravity: Vec2::ZERO,
+        ..default()
+    })
+    .add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
+    .add_loopless_state(GameState::MainMenu)
+    .add_plugin(utils::Plugin)
+    .add_plugin(main_menu::Plugin)
+    .add_plugin(plot::Plugin)
+    .add_plugin(unit::Plugin)
+    .add_plugin(game_menu::Plugin)
+    .add_plugin(health::Plugin)
+    .add_plugin(game::Plugin)
+    .add_plugin(selection::Plugin)
+    .add_startup_system(init);
 
     app.run();
 }
