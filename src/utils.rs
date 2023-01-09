@@ -63,8 +63,8 @@ impl Plugin {
         q_all: Query<Entity, (With<ComputedVisibility>, Without<Parent>)>,
     ) {
         cmd.insert_resource(Spawner {
-            aphid: Timer::from_seconds(7.0, TimerMode::Repeating),
-            caterpillar: Timer::from_seconds(60.0, TimerMode::Repeating),
+            aphid: Timer::from_seconds(10.0, TimerMode::Repeating),
+            caterpillar: Timer::from_seconds(100.0, TimerMode::Repeating),
             total: Duration::default(),
         });
         cmd.insert_resource(Compost(100));
@@ -112,12 +112,29 @@ impl Plugin {
         preloaded.push(assets.load_untyped("rose.png"));
         preloaded.push(assets.load_untyped("snip.ogg"));
         preloaded.push(assets.load_untyped("title.png"));
+        preloaded.push(assets.load_untyped("tutorial.png"));
         preloaded.push(assets.load_untyped("wheat_growing.png"));
         preloaded.push(assets.load_untyped("wheat_grown.png"));
         preloaded.push(assets.load_untyped("wheat_unit.png"));
         preloaded.push(assets.load_untyped("fonts/ModeSeven.ttf"));
 
         cmd.insert_resource(Preload(preloaded));
+    }
+
+    fn in_game_clear_colour(mut clear_color: ResMut<ClearColor>) {
+        clear_color.0 = Color::rgb_u8(17, 102, 0);
+    }
+
+    fn main_menu_clear_colour(mut clear_color: ResMut<ClearColor>) {
+        clear_color.0 = Color::rgb(0.4, 0.4, 0.4);
+    }
+
+    fn pause_on_lost_focus(mut time: ResMut<Time>, windows: Res<Windows>) {
+        if windows.primary().is_focused() {
+            time.unpause();
+        } else {
+            time.pause();
+        }
     }
 }
 
@@ -128,6 +145,9 @@ impl bevy::app::Plugin for Plugin {
             .init_resource::<Events<Reset>>()
             .add_event::<PlaySound>()
             .add_exit_system(GameState::InGame, Self::reset)
+            .add_enter_system(GameState::InGame, Self::in_game_clear_colour)
+            .add_enter_system(GameState::MainMenu, Self::main_menu_clear_colour)
+            .add_system(Self::pause_on_lost_focus)
             .add_system(Self::update_bar.run_in_state(GameState::InGame))
             .add_system(Self::play_sound.run_in_state(GameState::InGame))
             .add_system(Self::update_mouse_position.run_in_state(GameState::InGame))

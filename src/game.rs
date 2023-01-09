@@ -258,8 +258,8 @@ impl Plugin {
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Spawner {
-            aphid: Timer::from_seconds(7.0, TimerMode::Repeating),
-            caterpillar: Timer::from_seconds(60.0, TimerMode::Repeating),
+            aphid: Timer::from_seconds(10.0, TimerMode::Repeating),
+            caterpillar: Timer::from_seconds(100.0, TimerMode::Repeating),
             total: Duration::default(),
         })
         .insert_resource(Compost(100))

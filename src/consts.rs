@@ -25,7 +25,7 @@ pub const WHEAT_DECAY_TIME: f32 = 15.0;
 pub const WHEAT_COST: u32 = 20;
 pub const WHEAT_COMPOST: u32 = 80;
 
-// -----------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------
 
 pub const CARROT_COUNT: u32 = 3;
 pub const CARROT_MOVE_SPEED: f32 = 50.0;
