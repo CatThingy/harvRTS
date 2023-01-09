@@ -71,7 +71,7 @@ impl Plugin {
                         ..default()
                     },
                             style: Style {
-                                max_size: Size::new(Val::Px(900.0), Val::Px(500.0)),
+                                max_size: Size::new(Val::Px(700.0), Val::Px(400.0)),
                                 ..default()
                             },
                     ..default()

@@ -185,7 +185,7 @@ impl Plugin {
             });
             let Some((entity, plot, mut pos)) = plot else { return; };
 
-            pos.z = 1.0;
+            pos.z = 50.0;
 
             let new_plot_circle = cmd
                 .spawn((

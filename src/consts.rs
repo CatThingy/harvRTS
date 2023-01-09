@@ -13,17 +13,17 @@ pub const PLOT_UNLOCK_COST: u32 = 150;
 pub const CARROT_GROW_TIME: f32 = 10.0;
 pub const CARROT_DECAY_TIME: f32 = 30.0;
 pub const CARROT_COST: u32 = 50;
-pub const CARROT_COMPOST: u32 = 90;
+pub const CARROT_COMPOST: u32 = 140;
 
 pub const CLOVER_GROW_TIME: f32 = 3.0;
 pub const CLOVER_DECAY_TIME: f32 = 4.0;
 pub const CLOVER_COST: u32 = 0;
-pub const CLOVER_COMPOST: u32 = 40;
+pub const CLOVER_COMPOST: u32 = 30;
 
 pub const WHEAT_GROW_TIME: f32 = 5.0;
 pub const WHEAT_DECAY_TIME: f32 = 15.0;
 pub const WHEAT_COST: u32 = 20;
-pub const WHEAT_COMPOST: u32 = 40;
+pub const WHEAT_COMPOST: u32 = 80;
 
 // -----------------------------------------------------------------------
 
@@ -57,14 +57,23 @@ pub const WHEAT_ATTACK_SPEED: f32 = 1.0;
 pub const WHEAT_HEALTH: f32 = 10.0;
 pub const WHEAT_DAMAGE: f32 = 1.0;
 
-pub const ENEMY_MOVE_SPEED: f32 = 75.0;
-pub const ENEMY_AGGRO_RANGE: f32 = 25.0;
-pub const ENEMY_CHASE_RANGE: f32 = 50.0;
-pub const ENEMY_LEASH_RANGE: f32 = 100.0;
-pub const ENEMY_ATTACK_RANGE: f32 = 10.0;
-pub const ENEMY_ATTACK_SPEED: f32 = 1.0;
-pub const ENEMY_HEALTH: f32 = 5.0;
-pub const ENEMY_DAMAGE: f32 = 1.0;
+pub const APHID_MOVE_SPEED: f32 = 75.0;
+pub const APHID_AGGRO_RANGE: f32 = 100.0;
+pub const APHID_CHASE_RANGE: f32 = 300.0;
+pub const APHID_LEASH_RANGE: f32 = 100.0;
+pub const APHID_ATTACK_RANGE: f32 = 10.0;
+pub const APHID_ATTACK_SPEED: f32 = 0.5;
+pub const APHID_HEALTH: f32 = 5.0;
+pub const APHID_DAMAGE: f32 = 0.51;
+
+pub const CATERPILLAR_MOVE_SPEED: f32 = 25.0;
+pub const CATERPILLAR_AGGRO_RANGE: f32 = 25.0;
+pub const CATERPILLAR_CHASE_RANGE: f32 = 50.0;
+pub const CATERPILLAR_LEASH_RANGE: f32 = 100.0;
+pub const CATERPILLAR_ATTACK_RANGE: f32 = 16.0;
+pub const CATERPILLAR_ATTACK_SPEED: f32 = 2.0;
+pub const CATERPILLAR_HEALTH: f32 = 25.0;
+pub const CATERPILLAR_DAMAGE: f32 = 7.0;
 
 pub const SELECTION_COLLISION_GROUP: Group = Group::GROUP_31;
 pub const UNIT_COLLISION_GROUP: Group = Group::GROUP_1;

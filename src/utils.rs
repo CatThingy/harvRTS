@@ -21,6 +21,8 @@ pub struct Bar {
 
 pub struct Reset;
 
+pub struct PlaySound(pub String);
+
 pub struct Plugin;
 impl Plugin {
     fn update_mouse_position(
@@ -58,7 +60,8 @@ impl Plugin {
         q_all: Query<Entity, (With<ComputedVisibility>, Without<Parent>)>,
     ) {
         cmd.insert_resource(Spawner {
-            enemy: Timer::from_seconds(5.0, TimerMode::Repeating),
+            aphid: Timer::from_seconds(7.0, TimerMode::Repeating),
+            caterpillar: Timer::from_seconds(60.0, TimerMode::Repeating),
             total: Duration::default(),
         });
         cmd.insert_resource(Compost(100));
@@ -69,14 +72,22 @@ impl Plugin {
             cmd.entity(entity).despawn_recursive();
         }
     }
+
+    fn play_sound(audio: Res<Audio>, assets: Res<AssetServer>, mut events: EventReader<PlaySound>) {
+        for PlaySound(sound) in events.iter() {
+            audio.play(assets.load(sound));
+        }
+    }
 }
 
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MousePosition>()
             .init_resource::<Events<Reset>>()
+            .add_event::<PlaySound>()
             .add_exit_system(GameState::InGame, Self::reset)
             .add_system(Self::update_bar.run_in_state(GameState::InGame))
+            .add_system(Self::play_sound.run_in_state(GameState::InGame))
             .add_system(Self::update_mouse_position.run_in_state(GameState::InGame))
             .add_system(Self::handle_dead.run_in_state(GameState::InGame));
     }

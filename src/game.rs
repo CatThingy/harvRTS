@@ -21,7 +21,8 @@ pub struct Rose;
 
 #[derive(Resource)]
 pub struct Spawner {
-    pub enemy: Timer,
+    pub aphid: Timer,
+    pub caterpillar: Timer,
     pub total: Duration,
 }
 
@@ -69,29 +70,45 @@ impl Plugin {
 
         spawner.total += time.delta();
 
-        let tick_multiplier = spawner.total.as_secs_f32() / (2.0 * 60.0);
+        let aphid_tick_multiplier = spawner.total.as_secs_f32() / (60.0);
 
         spawner
-            .enemy
-            .tick(time.delta().mul_f32(1.0 + tick_multiplier));
+            .aphid
+            .tick(time.delta().mul_f32(1.0 + aphid_tick_multiplier));
+
+        let caterpillar_tick_multiplier = spawner.total.as_secs_f32() / (2.0 * 60.0);
+
+        spawner
+            .caterpillar
+            .tick(time.delta().mul_f32(1.0 + caterpillar_tick_multiplier));
 
         let rng = fastrand::Rng::default();
 
-        if spawner.enemy.finished() {
-            let viewport_size = camera.logical_viewport_size().unwrap();
-            let spawn_area = viewport_size / 4.0 - viewport_size / 2.0;
+        if spawner.aphid.just_finished() {
+            let viewport_size = camera.logical_viewport_size().unwrap() + Vec2::splat(20.0);
 
-            let x_sign = if rng.bool() { -1.0 } else { 1.0 };
-            let y_sign = if rng.bool() { -1.0 } else { 1.0 };
+            let mut rand = rng.f32() * (2.0 * viewport_size.x + 2.0 * viewport_size.y);
+
+            let perim_point = 'a: {
+                if rand < viewport_size.x {
+                    break 'a Vec2::new(rand, 0.0);
+                }
+                rand -= viewport_size.x;
+                if rand < viewport_size.y {
+                    break 'a Vec2::new(viewport_size.x, rand);
+                }
+                rand -= viewport_size.y;
+                if rand < viewport_size.x {
+                    break 'a Vec2::new(rand, viewport_size.y);
+                } else {
+                    break 'a Vec2::new(0.0, rand - viewport_size.x);
+                }
+            } - viewport_size / 2.0;
 
             cmd.spawn((
                 SpriteBundle {
-                    texture: assets.load("enemy.png"),
-                    transform: Transform::from_translation(Vec3::new(
-                        (rng.f32() * 0.25 + 1.0) * spawn_area.x * x_sign,
-                        (rng.f32() * 0.25 + 1.0) * spawn_area.y * y_sign,
-                        0.1,
-                    )),
+                    texture: assets.load("aphid.png"),
+                    transform: Transform::from_translation(perim_point.extend(0.1)),
                     ..default()
                 },
                 RigidBody::Dynamic,
@@ -107,16 +124,16 @@ impl Plugin {
                     angular_damping: 0.0,
                 },
                 Unit::new(
-                    ENEMY_MOVE_SPEED,
-                    ENEMY_AGGRO_RANGE,
-                    ENEMY_CHASE_RANGE,
-                    ENEMY_ATTACK_RANGE,
-                    ENEMY_LEASH_RANGE,
-                    ENEMY_ATTACK_SPEED,
-                    ENEMY_DAMAGE,
+                    APHID_MOVE_SPEED,
+                    APHID_AGGRO_RANGE,
+                    APHID_CHASE_RANGE,
+                    APHID_ATTACK_RANGE,
+                    APHID_LEASH_RANGE,
+                    APHID_ATTACK_SPEED,
+                    APHID_DAMAGE,
                 ),
                 Enemy,
-                Health::new(ENEMY_HEALTH),
+                Health::new(APHID_HEALTH),
             ))
             .with_children(|parent| {
                 parent.spawn((
@@ -130,9 +147,81 @@ impl Plugin {
                         ..default()
                     },
                     Bar {
-                        value: 5.0,
-                        max: 5.0,
+                        value: APHID_HEALTH,
+                        max: APHID_HEALTH,
                         size: 10.0,
+                    },
+                    HealthBar,
+                ));
+            });
+        }
+
+        if spawner.caterpillar.just_finished() {
+            let viewport_size = camera.logical_viewport_size().unwrap() + Vec2::splat(20.0);
+
+            let mut rand = rng.f32() * (2.0 * viewport_size.x + 2.0 * viewport_size.y);
+
+            let perim_point = 'a: {
+                if rand < viewport_size.x {
+                    break 'a Vec2::new(rand, 0.0);
+                }
+                rand -= viewport_size.x;
+                if rand < viewport_size.y {
+                    break 'a Vec2::new(viewport_size.x, rand);
+                }
+                rand -= viewport_size.y;
+                if rand < viewport_size.x {
+                    break 'a Vec2::new(rand, viewport_size.y);
+                } else {
+                    break 'a Vec2::new(0.0, rand - viewport_size.x);
+                }
+            } - viewport_size / 2.0;
+
+            cmd.spawn((
+                SpriteBundle {
+                    texture: assets.load("caterpillar.png"),
+                    transform: Transform::from_translation(perim_point.extend(0.1)),
+                    ..default()
+                },
+                RigidBody::Dynamic,
+                Velocity::default(),
+                Collider::ball(8.0),
+                LockedAxes::ROTATION_LOCKED_Z,
+                CollisionGroups {
+                    memberships: UNIT_COLLISION_GROUP | ENEMY_COLLISION_GROUP,
+                    filters: UNIT_COLLISION_GROUP,
+                },
+                Damping {
+                    linear_damping: 20.0,
+                    angular_damping: 0.0,
+                },
+                Unit::new(
+                    CATERPILLAR_MOVE_SPEED,
+                    CATERPILLAR_AGGRO_RANGE,
+                    CATERPILLAR_CHASE_RANGE,
+                    CATERPILLAR_ATTACK_RANGE,
+                    CATERPILLAR_LEASH_RANGE,
+                    CATERPILLAR_ATTACK_SPEED,
+                    CATERPILLAR_DAMAGE,
+                ),
+                Enemy,
+                Health::new(CATERPILLAR_HEALTH),
+            ))
+            .with_children(|parent| {
+                parent.spawn((
+                    SpriteBundle {
+                        transform: Transform::from_translation(Vec3::new(0.0, -4.0, 0.1)),
+                        sprite: Sprite {
+                            custom_size: Some(Vec2::new(2.0, 1.0)),
+                            color: Color::RED,
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    Bar {
+                        value: CATERPILLAR_HEALTH,
+                        max: CATERPILLAR_HEALTH,
+                        size: 20.0,
                     },
                     HealthBar,
                 ));
@@ -169,7 +258,8 @@ impl Plugin {
 impl bevy::app::Plugin for Plugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Spawner {
-            enemy: Timer::from_seconds(7.0, TimerMode::Repeating),
+            aphid: Timer::from_seconds(7.0, TimerMode::Repeating),
+            caterpillar: Timer::from_seconds(60.0, TimerMode::Repeating),
             total: Duration::default(),
         })
         .insert_resource(Compost(100))

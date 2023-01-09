@@ -4,10 +4,11 @@ use iyes_loopless::prelude::*;
 
 use crate::{
     consts::*,
+    game::Rose,
     health::{Dead, Health, HealthBar, HealthChange},
     plot::{Crop, HarvestEvent},
     selection::{HoverIndicator, Selectable, SelectionIndicator},
-    utils::{Bar, MousePosition},
+    utils::{Bar, MousePosition, PlaySound},
     GameState,
 };
 
@@ -88,7 +89,7 @@ impl Plugin {
     fn update_unit_state<T: Side + Component>(
         rapier_ctx: Res<RapierContext>,
         mut q_unit: Query<(&mut Unit, &GlobalTransform), With<T>>,
-        q_transform: Query<&GlobalTransform, Without<Dead>>,
+        q_transform: Query<(&GlobalTransform, Option<&Rose>), Without<Dead>>,
     ) {
         for (mut unit, transform) in &mut q_unit {
             let unit_pos = transform.translation().truncate();
@@ -138,7 +139,7 @@ impl Plugin {
                                         filter: T::ATTACKS_GROUP.bits().into(),
                                     }),
                                     |e| {
-                                        if let Ok(target) = q_transform.get(e) {
+                                        if let Ok((target, rose)) = q_transform.get(e) {
                                             let target_pos = target.translation().truncate();
                                             let dist = target_pos.distance(unit_pos);
 
@@ -146,12 +147,15 @@ impl Plugin {
                                                 < unit.leash_range
                                             {
                                                 match min_target {
-                                                    Some((_, old_dist)) => {
-                                                        if old_dist > dist {
-                                                            min_target = Some((e, dist))
+                                                    Some((_, old_dist, is_rose)) => {
+                                                        if is_rose || old_dist > dist {
+                                                            min_target =
+                                                                Some((e, dist, rose.is_some()))
                                                         }
                                                     }
-                                                    None => min_target = Some((e, dist)),
+                                                    None => {
+                                                        min_target = Some((e, dist, rose.is_some()))
+                                                    }
                                                 }
                                             }
                                         }
@@ -159,7 +163,7 @@ impl Plugin {
                                     },
                                 );
 
-                                if let Some((e, _)) = min_target {
+                                if let Some((e, _, _)) = min_target {
                                     unit.last_target_pos = dest;
                                     unit.leash_pos = unit_pos;
                                     unit.state = UnitState::Chase(e);
@@ -168,7 +172,7 @@ impl Plugin {
                                 }
                             }
                             UnitState::Chase(entity) => match q_transform.get(entity) {
-                                Ok(p) => {
+                                Ok((p, _)) => {
                                     let target_pos = p.translation().truncate();
                                     let pos = unit_pos;
 
@@ -210,18 +214,18 @@ impl Plugin {
                                 filter: T::ATTACKS_GROUP.bits().into(),
                             }),
                             |e| {
-                                if let Ok(target) = q_transform.get(e) {
+                                if let Ok((target, rose)) = q_transform.get(e) {
                                     let target_pos = target.translation().truncate();
                                     let dist = target_pos.distance(unit_pos);
 
                                     if target_pos.distance(unit.leash_pos) < unit.leash_range {
                                         match min_target {
-                                            Some((_, old_dist)) => {
-                                                if old_dist > dist {
-                                                    min_target = Some((e, dist))
+                                            Some((_, old_dist, is_rose)) => {
+                                                if is_rose || old_dist > dist {
+                                                    min_target = Some((e, dist, rose.is_some()))
                                                 }
                                             }
-                                            None => min_target = Some((e, dist)),
+                                            None => min_target = Some((e, dist, rose.is_some())),
                                         }
                                     }
                                 }
@@ -229,7 +233,7 @@ impl Plugin {
                             },
                         );
 
-                        if let Some((e, _)) = min_target {
+                        if let Some((e, _, _)) = min_target {
                             unit.leash_pos = unit_pos;
                             unit.state = UnitState::Chase(e);
                         }
@@ -254,18 +258,18 @@ impl Plugin {
                                 filter: T::ATTACKS_GROUP.bits().into(),
                             }),
                             |e| {
-                                if let Ok(target) = q_transform.get(e) {
+                                if let Ok((target, rose)) = q_transform.get(e) {
                                     let target_pos = target.translation().truncate();
                                     let dist = target_pos.distance(unit_pos);
 
                                     if target_pos.distance(unit.leash_pos) < unit.leash_range {
                                         match min_target {
-                                            Some((_, old_dist)) => {
-                                                if old_dist > dist {
-                                                    min_target = Some((e, dist))
+                                            Some((_, old_dist, is_rose)) => {
+                                                if is_rose || old_dist > dist {
+                                                    min_target = Some((e, dist, rose.is_some()))
                                                 }
                                             }
-                                            None => min_target = Some((e, dist)),
+                                            None => min_target = Some((e, dist, rose.is_some())),
                                         }
                                     }
                                 }
@@ -273,12 +277,12 @@ impl Plugin {
                             },
                         );
 
-                        if let Some((e, _)) = min_target {
+                        if let Some((e, _, _)) = min_target {
                             unit.state = UnitState::Chase(e);
                         }
                     }
                     UnitState::Chase(entity) => match q_transform.get(entity) {
-                        Ok(p) => {
+                        Ok((p, _)) => {
                             let target_pos = p.translation().truncate();
                             let pos = unit_pos;
 
@@ -345,10 +349,12 @@ impl Plugin {
     fn handle_harvest_event(
         mut cmd: Commands,
         mut ev_harvest: ResMut<Events<HarvestEvent>>,
+        mut ev_sound: EventWriter<PlaySound>,
         assets: Res<AssetServer>,
     ) {
         let rng = fastrand::Rng::default();
         for harvest in ev_harvest.drain() {
+            ev_sound.send(PlaySound("snip.ogg".to_string()));
             let common = (
                 RigidBody::Dynamic,
                 Velocity::default(),
@@ -623,7 +629,7 @@ impl Plugin {
         }
     }
 
-    fn enemy_spawn(mut q_enemy: Query<&mut Unit, Added<Enemy>>) {
+    fn enemy_spawn(mut q_enemy: Query<&mut Unit, Changed<Enemy>>) {
         for mut enemy in &mut q_enemy {
             enemy.command = Some(UnitCommand::AttackMove(Vec2::ZERO));
         }
