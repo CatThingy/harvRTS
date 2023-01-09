@@ -83,42 +83,41 @@ impl Plugin {
     }
 
     fn preload(mut cmd: Commands, assets: Res<AssetServer>) {
-        let mut preloaded = vec![];
-        preloaded.push(assets.load_untyped("aphid.png"));
-        preloaded.push(assets.load_untyped("arrow.png"));
-        preloaded.push(assets.load_untyped("cancel.png"));
-        preloaded.push(assets.load_untyped("carrot_growing.png"));
-        preloaded.push(assets.load_untyped("carrot_grown.png"));
-        preloaded.push(assets.load_untyped("carrot_unit.png"));
-        preloaded.push(assets.load_untyped("caterpillar.png"));
-        preloaded.push(assets.load_untyped("clear.ogg"));
-        preloaded.push(assets.load_untyped("clover_growing.png"));
-        preloaded.push(assets.load_untyped("clover_grown.png"));
-        preloaded.push(assets.load_untyped("clover_unit.png"));
-        preloaded.push(assets.load_untyped("compost.ogg"));
-        preloaded.push(assets.load_untyped("compost.png"));
-        preloaded.push(assets.load_untyped("death_text.png"));
-        preloaded.push(assets.load_untyped("empty.png"));
-        preloaded.push(assets.load_untyped("harvest.png"));
-        preloaded.push(assets.load_untyped("menu_button.png"));
-        preloaded.push(assets.load_untyped("plant.ogg"));
-        preloaded.push(assets.load_untyped("plant_carrot.png"));
-        preloaded.push(assets.load_untyped("plant_clover.png"));
-        preloaded.push(assets.load_untyped("plant_wheat.png"));
-        preloaded.push(assets.load_untyped("play.png"));
-        preloaded.push(assets.load_untyped("plot.png"));
-        preloaded.push(assets.load_untyped("plot_circle.png"));
-        preloaded.push(assets.load_untyped("rocks.png"));
-        preloaded.push(assets.load_untyped("rose.png"));
-        preloaded.push(assets.load_untyped("snip.ogg"));
-        preloaded.push(assets.load_untyped("title.png"));
-        preloaded.push(assets.load_untyped("tutorial.png"));
-        preloaded.push(assets.load_untyped("wheat_growing.png"));
-        preloaded.push(assets.load_untyped("wheat_grown.png"));
-        preloaded.push(assets.load_untyped("wheat_unit.png"));
-        preloaded.push(assets.load_untyped("fonts/ModeSeven.ttf"));
-
-        cmd.insert_resource(Preload(preloaded));
+        cmd.insert_resource(Preload(vec![
+            assets.load_untyped("aphid.png"),
+            assets.load_untyped("arrow.png"),
+            assets.load_untyped("cancel.png"),
+            assets.load_untyped("carrot_growing.png"),
+            assets.load_untyped("carrot_grown.png"),
+            assets.load_untyped("carrot_unit.png"),
+            assets.load_untyped("caterpillar.png"),
+            assets.load_untyped("clear.ogg"),
+            assets.load_untyped("clover_growing.png"),
+            assets.load_untyped("clover_grown.png"),
+            assets.load_untyped("clover_unit.png"),
+            assets.load_untyped("compost.ogg"),
+            assets.load_untyped("compost.png"),
+            assets.load_untyped("death_text.png"),
+            assets.load_untyped("empty.png"),
+            assets.load_untyped("harvest.png"),
+            assets.load_untyped("menu_button.png"),
+            assets.load_untyped("plant.ogg"),
+            assets.load_untyped("plant_carrot.png"),
+            assets.load_untyped("plant_clover.png"),
+            assets.load_untyped("plant_wheat.png"),
+            assets.load_untyped("play.png"),
+            assets.load_untyped("plot.png"),
+            assets.load_untyped("plot_circle.png"),
+            assets.load_untyped("rocks.png"),
+            assets.load_untyped("rose.png"),
+            assets.load_untyped("snip.ogg"),
+            assets.load_untyped("title.png"),
+            assets.load_untyped("tutorial.png"),
+            assets.load_untyped("wheat_growing.png"),
+            assets.load_untyped("wheat_grown.png"),
+            assets.load_untyped("wheat_unit.png"),
+            assets.load_untyped("fonts/ModeSeven.ttf"),
+        ]));
     }
 
     fn in_game_clear_colour(mut clear_color: ResMut<ClearColor>) {
